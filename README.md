@@ -1,4 +1,4 @@
-# Computing Evapotranspiration of large areas using remote sensing data
+## Computing Evapotranspiration of large areas using remote sensing data
 
 This repo hosts the algorithm, implemented in Python, and data manual 
 for the computation of evapotranspiration for large areas using remote sensing data
