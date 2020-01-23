@@ -11,9 +11,9 @@ for the computation of evapotranspiration for large areas using remote sensing d
 
 Data Manuals and algorithms for Version 2
 
-[Download WaPOR-ETLook Version 2 Data Manual](https://bitbucket.org/cioapps/wapor-et-look/downloads/FRAME_ET_v2_data_manual_finaldraft_S2.pdf)
+[Download WaPOR-ETLook Version 2 Data Manual](https://bitbucket.org/cioapps/wapor-et-look/downloads/FRAME_ET_v2_data_manual_finaldraft_S2_SM.pdf)
 
-[Download WaPOR-Biomass Production Version 2 Data Manual](https://bitbucket.org/cioapps/wapor-et-look/downloads/FRAME_NPP_v2_data_manual_finaldraft_S2.pdf)
+[Download WaPOR-Biomass Production Version 2 Data Manual](https://bitbucket.org/cioapps/wapor-et-look/downloads/FRAME_NPP_v2_data_manual_finaldraft_S2_SM.pdf)
 
 [C codes of algorithms for NPP and phenology](https://bitbucket.org/cioapps/wapor-et-look/downloads/FRAME-NPP-PHE.zip)
 
