@@ -681,7 +681,3 @@ def Combine_LST(folders_input_RAW, Startdate, Enddate):
             PF.Save_as_tiff(Time_file, Time, geo_ex, proj_ex) 
             
     return()
-        
-        
-        
-        
