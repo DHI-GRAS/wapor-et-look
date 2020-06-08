@@ -1,0 +1,60 @@
+import os
+import pyWAPOR
+import pandas as pd
+from datetime import datetime
+
+# SETUP
+
+sitename = 'bekaa-lebanon'
+
+wk_dir = os.getcwd()
+sample_dir = f'/data/{sitename}/sample-data'
+download_dir = sample_dir + r'/RAW' # This folder must be called 'RAW' - what did they mean by this?
+
+# earthdata account details
+username = 'lafa'
+password = 'Lf562010'
+
+# time period - For periods before 2015 consider using the MERRA functions instead og MERRA2
+startdate = '2018-04-20'
+enddate = '2018-04-23'
+
+# bounding box
+lon_limits = [31.7, 36.2]
+lat_limits = [33.6, 34.2]
+
+# setup GEOS and MERRA data
+geos_data = ['t2m', 'u2m', 'v2m', 'qv2m', 'tqv', 'ps', 'slp']
+merra_data = ['t2m', 'u2m', 'v2m', 'q2m', 'tpw', 'ps', 'slp', 'swgnet']
+
+waitbar = 0
+
+print('hello')
+
+# DOWNLOAD METEROLOGICAL DATA
+# pyWAPOR.Collect.CHIRPS.daily(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, Waitbar=waitbar)
+# pyWAPOR.Collect.GEOS.daily(wk_dir+download_dir, geos_data, startdate, enddate, lat_limits, lon_limits, Waitbar=waitbar)
+# pyWAPOR.Collect.GEOS.three_hourly(wk_dir+download_dir, geos_data, startdate, enddate, lat_limits, lon_limits, Waitbar=waitbar)
+# pyWAPOR.Collect.MERRA.daily_MERRA2(wk_dir+download_dir, merra_data, startdate, enddate, lat_limits, lon_limits, username, password, Waitbar=waitbar)
+# pyWAPOR.Collect.MERRA.hourly_MERRA2(wk_dir+download_dir, merra_data, startdate, enddate, lat_limits, lon_limits, [10, 11, 12], username, password, Waitbar=waitbar)
+# pyWAPOR.Collect.MERRA.yearly_T_Amplitude(wk_dir+download_dir, [datetime.strptime(startdate, '%Y-%m-%d').year], lat_limits, lon_limits, Waitbar=waitbar)
+#
+# # DOWNLOAD MODIS DATA
+# pyWAPOR.Collect.MCD43.ALBEDO(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, username, password, Waitbar=waitbar)
+# pyWAPOR.Collect.MOD11.LST(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, username, password, Waitbar=waitbar)
+# pyWAPOR.Collect.MOD13.NDVI(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, username, password, Waitbar=waitbar)
+# pyWAPOR.Collect.MYD11.LST(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, username, password, Waitbar=waitbar)
+# pyWAPOR.Collect.MYD13.NDVI(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, username, password, Waitbar=waitbar)
+#
+# # DOWNLOAD MISC. DATA
+# pyWAPOR.Collect.WAPOR.LandCover(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, Waitbar=waitbar)
+# pyWAPOR.Collect.MSGCPP.SDS(wk_dir+download_dir, startdate, enddate, lat_limits, lon_limits, Waitbar=waitbar)
+# pyWAPOR.Collect.Globcover.Landuse(wk_dir+download_dir, lat_limits, lon_limits, Waitbar=waitbar)
+# pyWAPOR.Collect.SRTM.DEM(wk_dir+download_dir, lat_limits, lon_limits, Waitbar=waitbar)
+#
+# # Merge data and prepare for final processing
+# pyWAPOR.Pre_ETLook.main(wk_dir+sample_dir, startdate, enddate, lat_limits, lon_limits, username, password)
+#
+# # CALCULATE ET FOR ALL DATES
+# for date in pd.date_range(startdate, enddate, freq = "D"):
+#     pyWAPOR.ETLook.ETLook_code.main(wk_dir+sample_dir+r'/ETLook_input', wk_dir+sample_dir+r'/ETLook_output', date)
