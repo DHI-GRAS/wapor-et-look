@@ -21,8 +21,8 @@ def printWaitBar(i, total, prefix = '', suffix = '', decimals = 1, length = 100,
     import sys
     import os
 
-    # Adjust when it is a linux computer
-    if (os.name=="posix" and total==0):
+    # total can never be zero because we divide by total
+    if total == 0:
         total = 0.0001
 
     percent = ("{0:." + str(decimals) + "f}").format(100 * (i / float(total)))
