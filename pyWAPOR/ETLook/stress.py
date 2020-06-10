@@ -1,5 +1,4 @@
 import math
-import numpy as np
 
 def stress_radiation(ra_24):
     r"""
@@ -37,7 +36,10 @@ def stress_radiation(ra_24):
     0.90322580645161288
     """
     stress = ra_24/(ra_24 + 60.)*(1 + 60./500.)
-    stress = stress.clip(0, 1)
+    if stress < 0:
+        stress = 0
+    elif stress > 1:
+        stress = 1
 
     return stress
 
@@ -82,9 +84,12 @@ def stress_moisture(se_root, tenacity=1.5):
     >>> stress.stress_moisture(0.5, tenacity = 3)
     1.0
     """
-    stress = tenacity*se_root - (np.sin(2*np.pi*se_root))/(2*np.pi)
-    stress = stress.clip(0, 1)
-    
+    stress = tenacity*se_root - (math.sin(2*math.pi*se_root))/(2*math.pi)
+    if stress < 0:
+        stress = 0
+    elif stress > 1:
+        stress = 1
+
     return stress
 
 
@@ -144,7 +149,10 @@ def stress_temperature(t_air_24, t_opt=25.0, t_min=0.0, t_max=50.0):
     y = (t_opt - t_min) * (t_max - t_opt)**f
 
     stress = x/y
-    stress = stress.clip(0,1)
+    if stress < 0:
+        stress = 0
+    elif stress > 1:
+        stress = 1
 
     return stress
 
@@ -187,7 +195,10 @@ def stress_vpd(vpd_24, vpd_slope=-0.3):
     0.79205584583201638
 
     """
-    stress = vpd_slope * np.log(vpd_24/10. + 0.5) + 1
-    stress = stress.clip(0, 1)
+    stress = vpd_slope * math.log(vpd_24/10. + 0.5) + 1
+    if stress < 0:
+        stress = 0
+    elif stress > 1:
+        stress = 1
 
     return stress

@@ -7,35 +7,8 @@
 
 """
 from math import sqrt, log, exp
-from pyWAPOR.ETLook import constants as c
-import numpy as np
+from ETLook import constants as c
 
-def air_temperature_celcius(t_air_k):
-    r"""
-    Converts air temperature from Kelvin to Celcius, where 0 degrees Celcius
-    is equal to 273.15 degrees Kelvin
-
-    Parameters
-    ----------
-    t_air_k : float
-        air temperature
-        :math:`T_a`
-        [K]
-
-    Returns
-    -------
-    t_air_c : float
-        air temperature
-        :math:`T_a`
-        [C]
-
-    Examples
-    --------
-    >>> from ETLook import meteo
-    >>> meteo.air_temperature_celcius(12.5)
-    285.65
-    """
-    return t_air_k - c.zero_celcius
 
 def air_temperature_kelvin(t_air):
     r"""
@@ -127,7 +100,7 @@ def wet_bulb_temperature_kelvin_inst(t_wet_i):
     return air_temperature_kelvin(t_wet_i)
 
 
-def disaggregate_air_temperature(t_air_coarse, z, z_coarse):
+def disaggregate_air_temperature(t_air_coarse, z, z_coarse, lapse=-0.006):
     r"""
     Disaggregates GEOS or MERRA or another coarse scale air temperature using
     two digital elevation models. One DEM for the target resolution, another
@@ -135,7 +108,7 @@ def disaggregate_air_temperature(t_air_coarse, z, z_coarse):
     resolution.
 
     .. math ::
-        T_{a}=T_{a,c}+(z-z_{c})L_{T}
+        T_{a}=T_{a,c}+(z-z_{c})L_{T}-T_{K,0}
 
     where the following constant is used
 
@@ -165,12 +138,12 @@ def disaggregate_air_temperature(t_air_coarse, z, z_coarse):
     t_air : float
         air temperature
         :math:`T_{a}`
-        [K]
+        [C]
 
     Notes
     -----
     The input air temperature is specified in Kelvin. The output air
-    temperature is specified in Kelvin.
+    temperature is specified in C.
 
     Examples
     --------
@@ -178,10 +151,10 @@ def disaggregate_air_temperature(t_air_coarse, z, z_coarse):
     >>> meteo.disaggregate_air_temperature(24.5+273.15, 10, 5)
     24.47
     """
-    return t_air_coarse + ((z - z_coarse) * c.lapse)
+    return t_air_coarse + ((z - z_coarse) * lapse) - c.zero_celcius
 
 
-def disaggregate_air_temperature_daily(t_air_24_coarse, z, z_coarse):
+def disaggregate_air_temperature_daily(t_air_24_coarse, z, z_coarse, lapse=-0.006):
     r"""Like :func:`disaggregate_air_temperature` but as a daily average
 
     Parameters
@@ -215,10 +188,10 @@ def disaggregate_air_temperature_daily(t_air_24_coarse, z, z_coarse):
     The input air temperature is specified in Kelvin. The output air
     temperature is specified in C.
     """
-    return disaggregate_air_temperature(t_air_24_coarse, z, z_coarse)
+    return disaggregate_air_temperature(t_air_24_coarse, z, z_coarse, lapse)
 
 
-def disaggregate_air_temperature_inst(t_air_i_coarse, z, z_coarse):
+def disaggregate_air_temperature_inst(t_air_i_coarse, z, z_coarse, lapse=-0.006):
     r"""Like :func:`disaggregate_air_temperature` but as a instantaneous value
 
     Parameters
@@ -252,7 +225,7 @@ def disaggregate_air_temperature_inst(t_air_i_coarse, z, z_coarse):
     The input air temperature is specified in Kelvin. The output air
     temperature is specified in C.
     """
-    return disaggregate_air_temperature(t_air_i_coarse, z, z_coarse)
+    return disaggregate_air_temperature(t_air_i_coarse, z, z_coarse, lapse)
 
 
 def disaggregate_dew_point_temperature_inst(t_dew_coarse_i, z, z_coarse, lapse_dew=-0.002):
@@ -286,7 +259,7 @@ def disaggregate_dew_point_temperature_inst(t_dew_coarse_i, z, z_coarse, lapse_d
         :math:`T_{dew,i}`
         [C]
     """
-    return t_dew_coarse_i + ((z - z_coarse) * c.lapse)
+    return t_dew_coarse_i + ((z - z_coarse) * lapse_dew)
 
 
 def vapour_pressure_from_specific_humidity(qv, p_air):
@@ -348,6 +321,83 @@ def vapour_pressure_from_specific_humidity_daily(qv_24, p_air_24):
     return vapour_pressure_from_specific_humidity(qv_24, p_air_24)
 
 
+def saturated_vapour_pressure_minimum(t_air_min_coarse):
+    """Like :func:`saturated_vapour_pressure` but based on daily minimum air temperature. This
+    is only relevant for reference ET calculations
+
+    Parameters
+    ----------
+    t_air_min_coarse : float
+        daily minimum air temperature
+        :math:`T_{a,min}`
+        [K]
+
+    Returns
+    -------
+    svp_24_min : float
+        daily saturated vapour pressure based on minimum air temperature
+        :math:`e_{s,min}`
+        [mbar]
+
+    """
+    return saturated_vapour_pressure(t_air_min_coarse-c.zero_celcius)
+
+
+def saturated_vapour_pressure_maximum(t_air_max_coarse):
+    """Like :func:`saturated_vapour_pressure` but based on daily maximum air temperature. This
+    is only relevant for reference ET calculations
+
+    Parameters
+    ----------
+    t_air_max_coarse : float
+        daily maximum air temperature
+        :math:`T_{a,max}`
+        [K]
+
+    Returns
+    -------
+    svp_24_max : float
+        daily saturated vapour pressure based on maximum air temperature
+        :math:`e_{s,max}`
+        [mbar]
+
+    """
+    return saturated_vapour_pressure(t_air_max_coarse-c.zero_celcius)
+
+
+def saturated_vapour_pressure_average(svp_24_max, svp_24_min):
+    """
+    Average saturated vapour pressure based on two saturated vapour pressure values
+    calculated using minimum and maximum air temperature respectively. This is preferable
+    to calculating saturated vapour pressure using the average air temperature, because
+    of the strong non-linear relationship between saturated vapour pressure and air
+    temperature
+
+    .. math ::
+        e_{s}=\frac{e^{0}\left(T_{max}\right)+e^{0}\left(T_{mon}\right)}{2}
+
+    Parameters
+    ----------
+    svp_24_max : float
+        daily saturated vapour pressure based on maximum air temperature
+        :math:`e_{s,max}`
+        [mbar]
+    svp_24_min : float
+        daily saturated vapour pressure based on minimum air temperature
+        :math:`e_{s,min}`
+        [mbar]
+
+    Returns
+    -------
+    svp_24 : float
+        daily saturated vapour pressure
+        :math:`e_{s,24}`
+        [mbar]
+
+    """
+    return (svp_24_max + svp_24_min)/2
+
+
 def vapour_pressure_from_specific_humidity_inst(qv_i, p_air_i):
     """Like :func:`vapour_pressure_from_specific_humidity` but as an instantaneous value
 
@@ -403,7 +453,7 @@ def saturated_vapour_pressure(t_air):
 
     .. plot:: pyplots/meteo/plot_saturated_vapour_pressure.py
     """
-    return 6.108 * np.exp(((17.27 * t_air) / (237.3 + t_air)))
+    return 6.108 * exp(((17.27 * t_air) / (237.3 + t_air)))
 
 
 def saturated_vapour_pressure_daily(t_air_24):
@@ -599,7 +649,8 @@ def vapour_pressure_deficit(svp, vp):
 
     """
     vpd = svp - vp
-    vpd[vpd<0] = 0
+    if vpd < 0:
+        vpd = 0
     return vpd
 
 
@@ -1166,8 +1217,10 @@ def wind_speed_blending_height(u, z_obs=2, z_b=100):
     z0m = 0.0171
 
     ws = (c.k * u) / log(z_obs / z0m) * log(z_b / z0m) / c.k
-    ws = ws.clip(1, 150)
-    
+    if ws < 1:
+        ws = 1
+    if ws > 150:
+        ws = 150
     return ws
 
 
@@ -1198,22 +1251,3 @@ def wind_speed_blending_height_daily(u_24, z_obs=2, z_b=100):
 
     """
     return wind_speed_blending_height(u_24, z_obs, z_b)
-
-def air_pressure_kpa2mbar(p_air_kpa):
-    """Like :func:`p_air`
-
-    Parameters
-    ----------
-    p_air_kpa : float
-        air pressure
-        :math:`Pair_{a}`
-        [kpa]
-
-    Returns
-    -------
-    p_air_mbar : float
-        air pressure
-        :math:`Pair_{a}`
-        [mbar]
-    """
-    return p_air_kpa * 10

@@ -1,5 +1,5 @@
-from pyWAPOR.ETLook import constants as c
-import numpy as np
+from ETLook import constants as c
+from numpy import log
 
 
 def initial_soil_aerodynamic_resistance(u_24, z_obs=2):
@@ -42,7 +42,7 @@ def initial_soil_aerodynamic_resistance(u_24, z_obs=2):
         [s/m]
 
     """
-    return (np.log(z_obs / c.z0_soil) * np.log(z_obs / (0.1 * c.z0_soil))) / (c.k**2 * u_24)
+    return (log(z_obs / c.z0_soil) * log(z_obs / (0.1 * c.z0_soil))) / (c.k**2 * u_24)
 
 
 def initial_daily_evaporation(rn_24_soil, g0_24, ssvp_24, ad_24, vpd_24,
@@ -184,7 +184,7 @@ def initial_canopy_aerodynamic_resistance(u_24, z0m, z_obs=2):
         :math:`r_{a,canopy}^{0}`
         [s/m]
     """
-    return (np.log(z_obs / z0m) * np.log(z_obs / (0.1 * z0m))) / (c.k**2 * u_24)
+    return (log(z_obs / z0m) * log(z_obs / (0.1 * z0m))) / (c.k**2 * u_24)
 
 
 def initial_daily_transpiration(rn_24_canopy, ssvp_24, ad_24, vpd_24,

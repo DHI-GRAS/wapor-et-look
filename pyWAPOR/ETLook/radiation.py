@@ -1,6 +1,5 @@
 import math
-import numpy as np
-from pyWAPOR.ETLook import constants as c
+from ETLook import constants as c
 
 def interception_wm2(int_mm, lh_24):
     r"""
@@ -70,7 +69,7 @@ def soil_fraction(lai):
     >>> rad.soil_fraction(3.0)
     0.16529888822158656
     """
-    return np.exp(-0.6*lai)
+    return math.exp(-0.6*lai)
 
 
 def longwave_radiation_fao_etref(t_air_k_24, vp_24, trans_24):
@@ -182,9 +181,8 @@ def longwave_radiation_fao(t_air_k_24, vp_24, trans_24, vp_slope=0.14, vp_offset
     >>> rad.longwave_radiation_fao(t_air_k=302.5, vp=10.3, trans_24=0.6)
     68.594182173686306
     """
-    l_net = c.sb*t_air_k_24**4*(vp_offset-vp_slope*np.sqrt(0.1*vp_24))*(lw_offset + lw_slope*(trans_24/0.75))
-    
-    return l_net
+
+    return c.sb*t_air_k_24**4*(vp_offset-vp_slope*math.sqrt(0.1*vp_24))*(lw_offset + lw_slope*(trans_24/0.75))
 
 
 def net_radiation(r0, ra_24, l_net, int_wm2):
@@ -317,7 +315,7 @@ def net_radiation_grass(ra_24, l_net, r0_grass=0.23):
         [wm-2]
     r0_grass : float
         albedo for reference grass
-        :math:`alpha_{0}_grass`
+        :math:`\alpha_{0, grass}`
         [-]
 
     Returns
@@ -436,7 +434,7 @@ def damping_depth(stc, vhc):
     >>> rad.damping_depth(stc=0.9, vhc=volumetric_heat_capacity())
     0.54514600029013294
     """
-    return np.sqrt((2*stc*c.year_sec)/(vhc*2*np.pi))
+    return math.sqrt((2*stc*c.year_sec)/(vhc*2*math.pi))
 
 
 #TODO north-south transition with regard to latitude
@@ -494,10 +492,13 @@ def bare_soil_heat_flux(doy, dd, stc, t_amp_year, lat):
     >>> rad.bare_soil_heat_flux(126, dd, stc, t_amp_year=13.4, lat=40*(math.pi/180.0))
     array([ 45.82350561])
     """
-    phase = np.where(lat > 0, -np.pi/4.0, -np.pi/4.0+np.pi)
+    if lat > 0:
+        phase = -math.pi/4.0
+    elif lat <= 0:
+        phase = -math.pi/4.0+math.pi
 
-    out = (np.sqrt(2.0)*t_amp_year*stc*
-           np.sin(2*np.pi/c.year_sec*doy*c.day_sec+phase))/dd
+    out = (math.sqrt(2.0)*t_amp_year*stc*
+           math.sin(2*math.pi/c.year_sec*doy*c.day_sec+phase))/dd
     return out
 
 
@@ -566,15 +567,20 @@ def soil_heat_flux(g0_bs, sf_soil, land_mask, rn_24_soil, trans_24, ra_24, l_net
     def water_func(ra_24, trans_24, l_net, rn_slope, rn_offset, rn_24_soil):
         rn_24_clear = 0.95 * ra_24 / trans_24 - l_net
         g0_24_clear = rn_24_clear * rn_slope + rn_offset
-        g0_24_clear = np.minimum(g0_24_clear, 0.5 * rn_24_clear)
+        g0_24_clear = min(g0_24_clear, 0.5 * rn_24_clear)
 
         # adjust water heat storage to current net radiation conditions
         g0_24 = g0_24_clear * rn_24_soil / rn_24_clear
 
         return g0_24
 
+    if land_mask == 0:
+        g0 = 0
+    elif land_mask == 1:
+        g0 = land_city_func(g0_bs, sf_soil)
+    elif land_mask == 2:
+        g0 = water_func(ra_24, trans_24, l_net, rn_slope, rn_offset, rn_24_soil)
+    elif land_mask == 3:
+        g0 = land_city_func(g0_bs, sf_soil)
 
-    g0 = np.where(np.logical_or(land_mask == 1, land_mask == 3), land_city_func(g0_bs, sf_soil), 0)
-    g0 = np.where(land_mask == 2, water_func(ra_24, trans_24, l_net, rn_slope, rn_offset, rn_24_soil), g0)
-    
     return g0

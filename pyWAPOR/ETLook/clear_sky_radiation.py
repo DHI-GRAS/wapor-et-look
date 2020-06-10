@@ -1,11 +1,11 @@
 """
     The clear_sky_radiation module contains all functions related to the
     calculation of (instantaneous) clear sky radation. Most of these
-    functions are based upon Suri et Hofierka, 2004. [SuHi04]_
+    functions are based upon Šúri et Hofierka, 2004. [SuHi04]_
 
 """
 from math import pi, sin, cos, asin, exp, log
-import numpy as np
+
 
 def extraterrestrial_irradiance_normal(I0, ied):
     r"""
@@ -96,7 +96,7 @@ def solar_constant():
 
     Parameters
     ----------
-       
+
     Returns
     -------
     I0 : float
@@ -139,7 +139,7 @@ def declination(day_angle):
 
 
 def relative_optical_airmass(p_air_i, p_air_0_i, h0ref):
-    r"""    
+    r"""
     Computes the relative optical air mass. It is calculated according to Kasten and Young 1989 [KaYo89]_
 
     .. math ::
@@ -160,7 +160,7 @@ def relative_optical_airmass(p_air_i, p_air_0_i, h0ref):
         solar elevation angle corrected for refraction
         :math:`h_{0}^{ref}`
         [degrees]
-        
+
     Returns
     -------
     m : float
@@ -173,16 +173,17 @@ def relative_optical_airmass(p_air_i, p_air_0_i, h0ref):
     .. [KaYo89] Kasten F., and T.A. Young. 1989, Revised optical air mass tables
        and approximation formula, Applied Optics 28:4735-8
     """
-    
-    h0ref_rad = h0ref * np.pi/180.
-    m = (p_air_i/p_air_0_i)/(np.sin(h0ref_rad) + 0.50572 * (h0ref + 6.07995)**-1.6364)
-    m[h0ref_rad <= 0] = 64
+    h0ref_rad = h0ref * pi/180.
+    if h0ref_rad <= 0:
+        m = 64
+    else:
+        m = (p_air_i/p_air_0_i)/(sin(h0ref_rad) + 0.50572 * (h0ref + 6.07995)**-1.6364)
 
     return m
 
 
 def solar_elevation_angle_refracted(h0):
-    r"""    
+    r"""
     Computes the solar elevation angle corrected for refraction
 
     .. math ::
@@ -201,7 +202,7 @@ def solar_elevation_angle_refracted(h0):
         solar elevation angle
         :math:`h_{0}`
         [degrees]
-        
+
     Returns
     -------
     h0ref : float
@@ -211,12 +212,12 @@ def solar_elevation_angle_refracted(h0):
     """
     delta_h0ref = 0.061359 * (0.1594 + 1.123*h0 + 0.065656*h0**2)/(1 + 28.9344*h0 + 277.3971*h0**2)
     h0ref = h0 + delta_h0ref
-    
+
     return h0ref
 
 
 def hour_angle(solar_time):
-    r"""    
+    r"""
     Computes the solar hour angle
 
     .. math ::
@@ -227,8 +228,8 @@ def hour_angle(solar_time):
     solar_time : float
         solar_time
         :math:`t`
-        [hours]         
-        
+        [hours]
+
     Returns
     -------
     ha : float
@@ -238,12 +239,12 @@ def hour_angle(solar_time):
 
     """
     ha = pi / 12 * (solar_time - 12)
-    
+
     return ha
 
 
 def solar_elevation_angle(lat, decl, ha):
-    r"""    
+    r"""
     Computes the solar elevation angle
 
     .. math ::
@@ -267,8 +268,8 @@ def solar_elevation_angle(lat, decl, ha):
     ha : float
         solar hour angle
         :math:`T`
-        [rad]       
-        
+        [rad]
+
     Returns
     -------
     h0 : float
@@ -277,20 +278,20 @@ def solar_elevation_angle(lat, decl, ha):
         [degrees]
 
     """
-    C31 = np.cos(lat) * np.cos(decl)
-    C33 = np.sin(lat) * np.sin(decl)
+    C31 = cos(lat) * cos(decl)
+    C33 = sin(lat) * sin(decl)
 
-    sin_h0 = C31 * np.cos(ha) + C33
-    
-    h0_rad = np.arcsin(sin_h0)
-    
-    h0 = h0_rad * 180 / np.pi
-    
+    sin_h0 = C31 * cos(ha) + C33
+
+    h0_rad = asin(sin_h0)
+
+    h0 = h0_rad * 180 / pi
+
     return h0
 
 
 def rayleigh_optical_thickness(m):
-    r"""    
+    r"""
     Computes the Rayleigh optical thickness at airmass :math:`m`. It is calculated according
     to the improved formula by Kasten (1996) [Ka96]_
 
@@ -312,7 +313,7 @@ def rayleigh_optical_thickness(m):
         relative optical airmass
         :math:`m`
         [-]
-        
+
     Returns
     -------
     rotm : float
@@ -325,14 +326,15 @@ def rayleigh_optical_thickness(m):
     .. [Ka96] Kasten F. 1996, The Linke turbidity factor based on improved values of the
        integral Rayleigh optical thickness. Solar Energy 56: 239-44
     """
-    rotm = 1 / (10.4 + 0.718 * m)
-    rotm[m <= 20] = 1/(6.6296 + 1.7513*m[m <= 20] - 0.1202*m[m <= 20]**2 + 0.0065*m[m <= 20]**3 - 0.00013*m[m <= 20]**4)
-    
+    if m <= 20:
+        rotm = 1/(6.6296 + 1.7513*m - 0.1202*m**2 + 0.0065*m**3 - 0.00013*m**4)
+    else:
+        rotm = 1 / (10.4 + 0.718 * m)
     return rotm
 
 
 def beam_irradiance_normal_clear(G0, Tl2, m, rotm, h0):
-    r"""    
+    r"""
     Computes the clear sky beam irradiance normal to the solar beam
 
     .. math ::
@@ -361,7 +363,7 @@ def beam_irradiance_normal_clear(G0, Tl2, m, rotm, h0):
         solar elevation angle
         :math:`h_0`
         [degrees]
-        
+
     Returns
     -------
     B0c : float
@@ -370,14 +372,15 @@ def beam_irradiance_normal_clear(G0, Tl2, m, rotm, h0):
         [W/m2]
 
     """
-    B0c = G0 * np.exp(-0.8662 * Tl2 * m * rotm)
-    B0c[h0 < 0] = 0
+    B0c = G0 * exp(-0.8662 * Tl2 * m * rotm)
+    if h0 < 0:
+        B0c = 0
 
     return B0c
 
 
 def beam_irradiance_horizontal_clear(B0c, h0):
-    r"""    
+    r"""
     Computes the clear sky beam irradiance on a horizontal surface
 
     .. math ::
@@ -393,7 +396,7 @@ def beam_irradiance_horizontal_clear(B0c, h0):
         solar elevation angle
         :math:`h_0`
         [degrees]
-        
+
     Returns
     -------
     Bhc : float
@@ -402,14 +405,15 @@ def beam_irradiance_horizontal_clear(B0c, h0):
         [W/m2]
 
     """
-    Bhc = B0c * np.sin(h0 * np.pi / 180)
-    Bhc[h0 < 0] = 0
+    Bhc = B0c * sin(h0 * pi / 180)
+    if h0 < 0:
+        Bhc = 0
 
     return Bhc
 
 
 def linke_turbidity(wv_i, aod550_i, p_air_i, p_air_0_i):
-    r"""    
+    r"""
     Computes the air mass 2 Linke atmospheric turbidity factor
 
     .. math ::
@@ -450,16 +454,16 @@ def linke_turbidity(wv_i, aod550_i, p_air_i, p_air_0_i):
     # prel = p0 / p # Papers mixes p/p0 and p0/p????
     prel = p_air_i / p_air_0_i
 
-    term1 = 3.91 * np.exp(0.689 * prel) * aod550_i
-    term2 = 0.376 * np.log(wv_i)
-        
-    Tl2 = term1 + term2 + (2 + 0.54 * prel - 0.5 * prel**2 + 0.16 * prel**2)    
-        
+    term1 = 3.91 * exp(0.689 * prel) * aod550_i
+    term2 = 0.376 * log(wv_i)
+
+    Tl2 = term1 + term2 + (2 + 0.54 * prel - 0.5 * prel**2 + 0.16 * prel**2)
+
     return Tl2
 
 
 def diffuse_irradiance_horizontal_clear(G0, Tl2, h0):
-    r"""    
+    r"""
     Computes the clear sky beam irradiance on a horizontal surface
 
     .. math ::
@@ -509,7 +513,7 @@ def diffuse_irradiance_horizontal_clear(G0, Tl2, h0):
         solar elevation angle
         :math:`h_0`
         [degrees]
-        
+
     Returns
     -------
     Dhc : float
@@ -520,19 +524,24 @@ def diffuse_irradiance_horizontal_clear(G0, Tl2, h0):
     Examples
     --------
     """
-    h0_rad = h0 * np.pi / 180.
+    h0_rad = h0 * pi / 180.
     TnTl2 = -0.015843 + 0.030543 * Tl2 + 0.0003797 * Tl2**2
 
-    A1 = 0.26463 - 0.061581 * Tl2 + 0.0031408 * Tl2**2
-    A1 = np.where((A1 * TnTl2) < 0.0022, 0.0022 / TnTl2, A1)
+    A1d = 0.26463 - 0.061581 * Tl2 + 0.0031408 * Tl2**2
+
+    if (A1d * TnTl2) < 0.0022:
+        A1 = 0.0022 / TnTl2
+    else:
+        A1 = A1d
+
     A2 = 2.04020 + 0.018945 * Tl2 - 0.011161 * Tl2**2
     A3 = -1.3025 + 0.039231 * Tl2 + 0.0085079 * Tl2**2
 
-    FdH0 = A1 + A2 * np.sin(h0_rad) + A3 * np.sin(h0_rad)**2
+    FdH0 = A1 + A2 * sin(h0_rad) + A3 * sin(h0_rad)**2
 
     Dhc = G0 * TnTl2 * FdH0
-    
-    Dhc[Dhc < 0] = 0
+
+    Dhc = max(Dhc, 0)
     
     return Dhc
 

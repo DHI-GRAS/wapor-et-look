@@ -1,6 +1,7 @@
 import math
-import numpy as np
-from pyWAPOR.ETLook import constants as c
+
+from ETLook import constants as c
+
 
 def initial_sensible_heat_flux_canopy_daily(rn_24_canopy, t_24_init):
     r"""
@@ -16,7 +17,7 @@ def initial_sensible_heat_flux_canopy_daily(rn_24_canopy, t_24_init):
     ----------
     rn_24_canopy : float
         daily net radiation for the canopy
-        :math:`Q^{canopy}^{*}`
+        :math:`Q_{canopy}^{*}`
         [W m-2]
     t_24_init : float
         initial estimate of daily transpiration
@@ -48,7 +49,7 @@ def initial_sensible_heat_flux_soil_daily(rn_24_soil, e_24_init, g0_24):
     ----------
     rn_24_soil : float
         daily net radiation for the soil
-        :math:`Q^{canopy}^{*}`
+        :math:`Q_{canopy}^{*}`
         [W m-2]
     g0_24 : float
         daily soil heat flux
@@ -104,7 +105,7 @@ def initial_friction_velocity_daily(u_b_24, z0m, disp, z_b=100):
         :math:`u_{*}`
         [m s-1]
     """
-    return (c.k * u_b_24) / (np.log((z_b - disp) / z0m))
+    return (c.k * u_b_24) / (math.log((z_b - disp) / z0m))
 
 
 def initial_friction_velocity_soil_daily(u_b_24, disp, z_b=100):
@@ -138,7 +139,7 @@ def initial_friction_velocity_soil_daily(u_b_24, disp, z_b=100):
         :math:`u_{*}`
         [m s-1]
     """
-    return (c.k * u_b_24) / (np.log((z_b - disp) / c.z0_soil))
+    return (c.k * u_b_24) / (math.log((z_b - disp) / c.z0_soil))
 
 
 def monin_obukhov_length(h_flux, ad, u_star, t_air_k):
@@ -240,10 +241,10 @@ def stability_factor(x_b):
         [-]
     """
     return (
-        2 * np.log((1 + x_b) / 2)
-        + np.log((1 + x_b ** 2) / 2)
-        - 2 * np.arctan(x_b)
-        + 0.5 * np.pi
+        2 * math.log((1 + x_b) / 2)
+        + math.log((1 + x_b ** 2) / 2)
+        - 2 * math.atan(x_b)
+        + 0.5 * math.pi
     )
 
 
@@ -300,7 +301,7 @@ def stability_correction_heat_obs(x_b_obs):
         :math:`\psi_{h,obs}`
         [-]
     """
-    return 2 * np.log((1 + x_b_obs ** 2) / 2)
+    return 2 * math.log((1 + x_b_obs ** 2) / 2)
 
 
 def friction_velocity(u_b, z_b, z0m, disp, sf):
@@ -341,7 +342,7 @@ def friction_velocity(u_b, z_b, z0m, disp, sf):
         :math:`u_{*}`
         [m s-1]
     """
-    return (c.k * u_b) / (np.log((z_b - disp) / z0m) - sf)
+    return (c.k * u_b) / (math.log((z_b - disp) / z0m) - sf)
 
 
 def ra_canopy(
@@ -432,22 +433,29 @@ def ra_canopy(
     u_star_start = u_star_init
     iteration = 0
     epsilon = 10.0
-    while (iteration < iter_ra) and (np.nanmax(epsilon) > 0.01):
+    while (iteration < iter_ra) and (epsilon > -10):
         iteration += 1
         monin = monin_obukhov_length(h_flux, ad, u_star_start, t_air_k)
-        x_b = np.where(monin > 0, 1, stability_parameter(monin, disp, z_b))
+        if monin > 0:
+            x_b = 1
+        else:
+            x_b = stability_parameter(monin, disp, z_b)
         sf = stability_factor(x_b)
         u_star = friction_velocity(u_b, z_b, z0m, disp, sf)
         epsilon = abs(u_star - u_star_start)
         u_star_start = u_star
 
-    x_b_obs = np.where(monin <= 0, stability_parameter_obs(monin, z_obs), 1)
-    sf_obs = np.where(monin <= 0, stability_correction_heat_obs(x_b_obs), 0)
-    
-    disp = np.minimum(disp, 1.5)
-    ra = (np.log((z_obs - disp) / (0.1 * z0m)) - sf_obs) / (c.k * u_star)
-    ra = np.minimum(ra, 500)
-    ra = np.maximum(ra, 25)
+    if monin > 0:
+        x_b_obs = 1
+        sf_obs = 0
+    else:
+        x_b_obs = stability_parameter_obs(monin, z_obs)
+        sf_obs = stability_correction_heat_obs(x_b_obs)
+
+    disp = min(disp, 1.5)
+    ra = (math.log((z_obs - disp) / (0.1 * z0m)) - sf_obs) / (c.k * u_star)
+    ra = min(ra, 500)
+    ra = max(ra, 25)
 
     return ra
 
@@ -467,7 +475,7 @@ def transpiration(
     u_b_24,
     z_obs=2,
     z_b=100,
-    iter_h=5,
+    iter_h=3,
 ):
     r"""
     Computes the transpiration using an iterative approach. The iteration is
@@ -557,7 +565,7 @@ def transpiration(
     epsilon = 10.0
     h_start = h_canopy_24_init
 
-    while (iteration < iter_h) and (np.nanmax(epsilon) > 0.01):
+    while (iteration < iter_h) and (epsilon > -10):
         iteration += 1
         ra_canopy_start = ra_canopy(
             h_start, t_air_k_24, u_star_24_init, ad_24, z0m, disp, u_b_24, z_obs, z_b
@@ -657,22 +665,29 @@ def ra_soil(
     u_star_start = u_star_24_init
     iteration = 0
     epsilon = 10
-    while (iteration < iter_ra) and (np.nanmax(epsilon) > 0.01):
+    while (iteration < iter_ra) and (epsilon > -10):
         iteration += 1
         monin = monin_obukhov_length(h_flux, ad, u_star_start, t_air_k)
-        x_b = np.where(monin > 0, 0, stability_parameter(monin, disp, z_b)) #!!! monin > 0 is 0? while in ra_canopy this is 1??
+        if monin > 0:
+            x_b = 0
+        else:
+            x_b = stability_parameter(monin, disp, z_b)
         sf = stability_factor(x_b)
         u_star = friction_velocity(u_b, z_b, c.z0_soil, disp, sf)
         epsilon = abs(u_star - u_star_start)
         u_star_start = u_star
 
-    x_b_obs = np.where(monin <= 0, stability_parameter_obs(monin, z_obs), 1)
-    sf_obs = np.where(monin <= 0, stability_correction_heat_obs(x_b_obs), 0)   
+    if monin > 0:
+        x_b_obs = 1
+        sf_obs = 0
+    else:
+        x_b_obs = stability_parameter_obs(monin, z_obs)
+        sf_obs = stability_correction_heat_obs(x_b_obs)
 
     # 1.5 limit is from ETLook IDL
-    disp = np.minimum(disp, 1.5)
-    ra = (np.log((z_obs - disp) / (0.1 * c.z0_soil)) - sf_obs) / (c.k * u_star)
-    ra = np.maximum(ra, 25)
+    disp = min(disp, 1.5)
+    ra = (math.log((z_obs - disp) / (0.1 * c.z0_soil)) - sf_obs) / (c.k * u_star)
+    ra = max(ra, 25)
 
     return ra
 
@@ -781,7 +796,7 @@ def evaporation(
     iteration = 0
     epsilon = 10
     h_start = h_soil_24_init
-    while (iteration < iter_h) and (np.nanmax(epsilon) > 0.1):
+    while (iteration < iter_h) and (epsilon > -10):
         iteration += 1
         ra_soil_start = ra_soil(
             h_start, t_air_k_24, u_star_24_soil_init, ad_24, disp, u_b_24, z_obs, z_b

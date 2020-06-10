@@ -4,7 +4,7 @@
 
 """
 import math
-import numpy as np
+
 
 def vegetation_cover(ndvi, nd_min=0.125, nd_max=0.8, vc_pow=0.7):
     r"""
@@ -22,7 +22,7 @@ def vegetation_cover(ndvi, nd_min=0.125, nd_max=0.8, vc_pow=0.7):
 
     Parameters
     ----------
-    ndvi : Array
+    ndvi : float
         Normalized Difference Vegetation Index
         :math:`I_{NDVI}`
         [-]
@@ -41,7 +41,7 @@ def vegetation_cover(ndvi, nd_min=0.125, nd_max=0.8, vc_pow=0.7):
 
     Returns
     -------
-    vc : float Array
+    vc : float
         vegetation cover
         :math:`c_{veg}`
         [-]
@@ -59,25 +59,12 @@ def vegetation_cover(ndvi, nd_min=0.125, nd_max=0.8, vc_pow=0.7):
     .. plot:: pyplots/leaf/plot_vegetation_cover.py
 
     """
-    
-    if np.isscalar(ndvi):
-        
-        if ndvi <= nd_min:
-            res = 0
-        if (ndvi > nd_min) & (ndvi < nd_max):
-            res = 1 - ((nd_max - ndvi) / (nd_max - nd_min)) ** vc_pow
-        if ndvi >= nd_max:
-            res = 1
-    else:
-            
-        # Create empty array
-        res = np.ones(ndvi.shape) * np.nan
-        
-        # fill in array
-        res[ndvi<=nd_min] = 0
-        res[np.logical_and(ndvi > nd_min, ndvi < nd_max)] = 1 - ((nd_max - ndvi[np.logical_and(ndvi > nd_min, ndvi < nd_max)]) / (nd_max - nd_min)) ** vc_pow
-        res[ndvi>=nd_max] = 1    
-
+    if ndvi <= nd_min:
+        res = 0
+    if (ndvi > nd_min) & (ndvi < nd_max):
+        res = 1 - ((nd_max - ndvi) / (nd_max - nd_min)) ** vc_pow
+    if ndvi >= nd_max:
+        res = 1
     return res
 
 
@@ -136,24 +123,12 @@ def leaf_area_index(vc, vc_min=0.0, vc_max=vegetation_cover(0.795), lai_pow=-0.4
     .. plot:: pyplots/leaf/plot_leaf_area_index.py
 
     """
-    if np.isscalar(vc):
-        if vc <= vc_min:
-            res = 0
-        if (vc > vc_min) & (vc < vc_max):
-            res = math.log(-(vc - 1)) / lai_pow
-        if vc >= vc_max:
-            res = math.log(-(vc_max - 1)) / lai_pow
-            
-    else:
-        
-        # Create empty array
-        res = np.ones(vc.shape) * np.nan
-        
-        # fill in array
-        res[vc<=vc_min] = 0
-        res[np.logical_and(vc > vc_min, vc < vc_max)] = np.log(-(vc[np.logical_and(vc > vc_min, vc < vc_max)] - 1)) / lai_pow
-        res[vc>=vc_max] = np.log(-(vc_max - 1)) / lai_pow         
-
+    if vc <= vc_min:
+        res = 0
+    if (vc > vc_min) & (vc < vc_max):
+        res = math.log(-(vc - 1)) / lai_pow
+    if vc >= vc_max:
+        res = math.log(-(vc_max - 1)) / lai_pow
     return res
 
 

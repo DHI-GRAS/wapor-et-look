@@ -1,9 +1,8 @@
 import math
 from math import pi
-import numpy as np
+from ETLook import constants as c
 import warnings
 
-from pyWAPOR.ETLook import constants as c
 
 def longitude_rad(lon_deg):
     r"""
@@ -24,7 +23,7 @@ def longitude_rad(lon_deg):
         [rad]
 
     """
-    return lon_deg * np.pi/180.0
+    return lon_deg * pi/180.0
 
 
 def latitude_rad(lat_deg):
@@ -46,7 +45,7 @@ def latitude_rad(lat_deg):
         [rad]
 
     """
-    return lat_deg * np.pi/180.0
+    return lat_deg * pi/180.0
 
 
 def slope_rad(slope_deg):
@@ -155,7 +154,7 @@ def earth_sun_distance(doy):
                    'use "iesd" (solar_radiation.inverse_earth_sun_distance) instead'),
                   DeprecationWarning, stacklevel=2)
 
-    return 1 + 0.033 * np.cos(doy * 2 * np.pi / 365.0)
+    return 1 + 0.033 * math.cos(doy * 2 * pi / 365.0)
 
 
 def inverse_earth_sun_distance(doy):
@@ -176,7 +175,7 @@ def inverse_earth_sun_distance(doy):
     -------
     iesd : float
         inverse earth sun distance
-        :math:`d_{inv}_{r}`
+        :math:`d_{r}`
         [AU]
 
     Examples
@@ -281,7 +280,7 @@ def sunset_hour_angle(lat, decl):
         [rad]
 
     """
-    return np.arccos(-(np.tan(lat) * np.tan(decl)))
+    return math.acos(-(math.tan(lat) * math.tan(decl)))
 
 
 def hour_angle(sc, dtime, lon=0):
@@ -340,7 +339,7 @@ def inst_solar_radiation_toa(csza, iesd):
         [-]
     iesd : float
         inverse earth sun distance
-        :math:`d_{inv}_{r}`
+        :math:`d_{r}`
         [AU]
 
     Returns
@@ -376,7 +375,7 @@ def daily_solar_radiation_toa(sc, decl, iesd, lat, slope=0, aspect=0):
     ----------
     iesd : float
         inverse earth sun distance
-        :math:`d_{inv}_{r}`
+        :math:`d_{r}`
         [AU]
     decl : float
         solar declination
@@ -486,19 +485,21 @@ def cosine_solar_zenith_angle(ha, decl, lat, slope=0, aspect=0):
     >>> solrad.cosine_solar_zenith_angle(ha, decl=solrad.declination(1), lat=0)
     0.92055394167363314
     """
-    t1 = np.sin(decl) * np.sin(lat) * np.cos(slope)
-    t2 = np.sin(decl) * np.cos(lat) * np.sin(slope) * np.cos(aspect - np.pi)
-    t3 = np.cos(decl) * np.cos(lat) * np.cos(slope)
-    t4 = np.cos(decl) * np.sin(lat) * np.sin(slope) * np.cos(aspect - np.pi)
-    t5 = np.cos(decl) * np.sin(slope) * np.sin(aspect - np.pi)
-    csza = t1 - t2 + t3 * np.cos(ha) + t4 * np.cos(ha) + t5 * np.sin(ha)
+    t1 = math.sin(decl) * math.sin(lat) * math.cos(slope)
+    t2 = math.sin(decl) * math.cos(lat) * math.sin(slope) * math.cos(aspect - pi)
+    t3 = math.cos(decl) * math.cos(lat) * math.cos(slope)
+    t4 = math.cos(decl) * math.sin(lat) * math.sin(slope) * math.cos(aspect - pi)
+    t5 = math.cos(decl) * math.sin(slope) * math.sin(aspect - pi)
+    csza = t1 - t2 + t3 * math.cos(ha) + t4 * math.cos(ha) + t5 * math.sin(ha)
 
     # check if the sun is above the horizon
-    check = np.sin(decl) * np.sin(lat) + np.cos(decl) * \
-        np.cos(lat) * np.cos(ha)
+    check = math.sin(decl) * math.sin(lat) + math.cos(decl) * \
+        math.cos(lat) * math.cos(ha)
 
-    res = check
-    res[np.logical_or(csza <= 0, check < 0)] = 0
+    if (csza > 0) & (check >= 0):
+        res = csza
+    else:
+        res = 0
 
     return res
 
@@ -539,8 +540,8 @@ def daily_solar_radiation_toa_flat(decl, iesd, lat, ws):
         [Wm-2]
 
     """
-    ra_flat = (c.sol / np.pi) * iesd * (ws * np.sin(lat) * np.sin(decl) +
-                                        np.cos(lat) * np.cos(decl) * np.sin(ws))
+    ra_flat = (c.sol / pi) * iesd * (ws * math.sin(lat) * math.sin(decl) +
+                                        math.cos(lat) * math.cos(decl) * math.sin(ws))
 
     return ra_flat
 
@@ -606,7 +607,10 @@ def diffusion_index(trans_24, diffusion_slope=-1.33, diffusion_intercept=1.15):
 
     """
     res = diffusion_intercept + trans_24 * diffusion_slope
-    res = res.clip(0,1)
+    if res < 0:
+        res = 0
+    elif res > 1:
+        res = 1
 
     return res
 
@@ -648,6 +652,4 @@ def daily_total_solar_radiation(ra_24_toa, ra_24_toa_flat, diffusion_index, tran
     """
     diffuse = trans_24 * ra_24_toa_flat * diffusion_index
     direct = trans_24 * ra_24_toa * (1 - diffusion_index)
-    ra_24 = diffuse + direct
-    
-    return ra_24
+    return diffuse + direct

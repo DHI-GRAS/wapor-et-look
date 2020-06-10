@@ -1,5 +1,3 @@
-import numpy as np
-
 def atmospheric_canopy_resistance(lai_eff, stress_rad, stress_vpd,
                                   stress_temp, rs_min=70, rcan_max=1000000.):
     r"""
@@ -49,12 +47,17 @@ def atmospheric_canopy_resistance(lai_eff, stress_rad, stress_vpd,
     >>> res.atmospheric_canopy_resistance(0.9, 0.4, 0.9, 0.94)
     229.839768846861
     """
-    
+
     bulk_stress = stress_rad * stress_temp * stress_vpd
-    r_canopy_0 = (rs_min/lai_eff) / bulk_stress
-    r_canopy_0[np.logical_or(bulk_stress == 0, lai_eff == 0)] = rcan_max
+    max_mask = (bulk_stress == 0) | (lai_eff == 0)
+
+    if max_mask:
+        r_canopy_0 = rcan_max
+    else:
+        r_canopy_0 = (rs_min / lai_eff) / bulk_stress
 
     return r_canopy_0
+
 
 def canopy_resistance(r_canopy_0, stress_moist, rcan_max=1000000.):
     r"""
@@ -77,7 +80,7 @@ def canopy_resistance(r_canopy_0, stress_moist, rcan_max=1000000.):
         Maximum stomatal resistance
         :math:`r_{can_max}`
         [sm-1]
-        
+
     Returns
     -------
     r_canopy : float
@@ -91,13 +94,15 @@ def canopy_resistance(r_canopy_0, stress_moist, rcan_max=1000000.):
     >>> res.canopy_resistance(218, 0.8)
     272.5
     """
+    if stress_moist == 0:
+        r_canopy = rcan_max
+    else:
+        r_canopy = r_canopy_0 / stress_moist
 
-    r_canopy = np.where(stress_moist == 0, rcan_max, r_canopy_0/stress_moist)
-    
     return r_canopy
 
 
-def soil_resistance(se_top, land_mask = 1, r_soil_pow=-2.1, r_soil_min=800):
+def soil_resistance(se_top, land_mask=1, r_soil_pow=-2.1, r_soil_min=800):
     r"""
     Computes soil resistance
 
@@ -136,7 +141,8 @@ def soil_resistance(se_top, land_mask = 1, r_soil_pow=-2.1, r_soil_min=800):
     >>> res.soil_resistance(se_top=0.9)
     998.1153098304111
     """
-    res = np.ones(land_mask.shape) * r_soil_min*se_top**r_soil_pow
-    res[land_mask == 2.] = 0.0
+    res = r_soil_min * se_top ** r_soil_pow
+    if land_mask == 2:
+        res = 0.0
 
     return res

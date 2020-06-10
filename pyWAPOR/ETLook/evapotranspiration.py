@@ -1,11 +1,11 @@
-from pyWAPOR.ETLook import constants as c
-from pyWAPOR.ETLook import unstable
-import numpy as np
+from ETLook import constants as c
+from ETLook import unstable
+
 
 def interception_mm(P_24, vc, lai, int_max=0.2):
     r"""
     Computes the daily interception. The daily interception of a vegetated area
-    is calculated according to von Hoyningen-H--ne (1983) [Ho1983]_
+    is calculated according to von Hoyningen-Hüne (1983) [Ho1983]_
     and Braden(1985) [Br1985]_.
 
     .. math ::
@@ -48,19 +48,19 @@ def interception_mm(P_24, vc, lai, int_max=0.2):
 
     References
     ----------
-    .. [Br1985] Braden, H., Energiehaushalts- und Verdunstungsmodell f--r Wasser- und
+    .. [Br1985] Braden, H., Energiehaushalts- und Verdunstungsmodell für Wasser- und
         Stoffhaushalts-untersuchungen landwirtschaftlich genutzter
         Einzugsgebiete. Mitteilungen der Deutschen Bodenkundlichen
         Gesellschaft, (1985), 42, 254-299
-    .. [Ho1983] von Hoyningen-H--e, J., Die Interception des Niederschlags in
-        landwirtschaftlichen Best--nden. Schriftenreihe des DVWK, 1983, 57, 1-53
+    .. [Ho1983] von Hoyningen-Hüne, J., Die Interception des Niederschlags in
+        landwirtschaftlichen Beständen. Schriftenreihe des DVWK, 1983, 57, 1-53
 
 
     """
-    
-    res = int_max * lai * (1 - (1 / (1 + ((vc * P_24) / (int_max * lai)))))
-    res[np.logical_or.reduce([lai == 0, vc == 0 , P_24 == 0])] = 0
-        
+    if (lai == 0) | (vc == 0) | (P_24 == 0):
+        res = 0
+    else:
+        res = int_max * lai * (1 - (1 / (1 + ((vc * P_24) / (int_max * lai)))))
     return res
 
 
