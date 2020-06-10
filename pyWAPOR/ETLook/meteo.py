@@ -10,6 +10,34 @@ from math import sqrt, log, exp
 from pyWAPOR.ETLook import constants as c
 
 
+def air_temperature_celcius(t_air_k):
+    r"""
+    Converts air temperature from Kelvin to Celcius, where 0 degrees Celcius
+    is equal to 273.15 degrees Kelvin
+
+    Parameters
+    ----------
+    t_air_k : float
+        air temperature
+        :math:`T_a`
+        [K]
+
+    Returns
+    -------
+    t_air_c : float
+        air temperature
+        :math:`T_a`
+        [C]
+
+    Examples
+    --------
+    >>> from ETLook import meteo
+    >>> meteo.air_temperature_celcius(12.5)
+    285.65
+    """
+    return t_air_k - c.zero_celcius
+
+
 def air_temperature_kelvin(t_air):
     r"""
     Converts air temperature from Celcius to Kelvin, where 0 degrees Celcius
