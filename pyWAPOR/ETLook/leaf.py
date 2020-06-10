@@ -59,12 +59,27 @@ def vegetation_cover(ndvi, nd_min=0.125, nd_max=0.8, vc_pow=0.7):
     .. plot:: pyplots/leaf/plot_vegetation_cover.py
 
     """
-    if ndvi <= nd_min:
-        res = 0
-    if (ndvi > nd_min) & (ndvi < nd_max):
-        res = 1 - ((nd_max - ndvi) / (nd_max - nd_min)) ** vc_pow
-    if ndvi >= nd_max:
-        res = 1
+
+    if np.isscalar(ndvi):
+
+        if ndvi <= nd_min:
+            res = 0
+        if (ndvi > nd_min) & (ndvi < nd_max):
+            res = 1 - ((nd_max - ndvi) / (nd_max - nd_min)) ** vc_pow
+        if ndvi >= nd_max:
+            res = 1
+
+    else:
+
+        # Create empty array
+        res = np.ones(ndvi.shape) * np.nan
+
+        # fill in array
+        res[ndvi <= nd_min] = 0
+        res[np.logical_and(ndvi > nd_min, ndvi < nd_max)] = 1 - (
+                    (nd_max - ndvi[np.logical_and(ndvi > nd_min, ndvi < nd_max)]) / (nd_max - nd_min)) ** vc_pow
+        res[ndvi >= nd_max] = 1
+
     return res
 
 
