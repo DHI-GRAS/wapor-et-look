@@ -17,7 +17,9 @@ Data Manuals and algorithms for Version 2
 [python codes of algorithms for WaPOR-ETLook V2](https://bitbucket.org/cioapps/wapor-et-look/downloads/WaPOR-ETLook_v2.zip)
 
 Data Manuals and algorithms for Version 1
+
 [Download WaPOR-ETLook Version 1 Data Manual](https://bitbucket.org/cioapps/wapor-et-look/raw/9ec88e56769f49722c2d1165bb34547f5842b811/Docs/WaPOR_ET_data_manual_finaldraft-v1.2-for-distribution.pdf)
 
 Version 1 on Collaboratory Jupiter
+
 [Try WaPOR-ETLook Version 1 on Collaboratory Jupyter](https://colab.research.google.com/drive/1BH2uqzhUe3p2eRWJ0oheWE9W9irtrFYZ)
