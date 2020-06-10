@@ -1,5 +1,5 @@
 import math
-from ETLook import constants as c
+from pyWAPOR.ETLook import constants as c
 
 def interception_wm2(int_mm, lh_24):
     r"""

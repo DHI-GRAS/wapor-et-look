@@ -1,6 +1,6 @@
 import math
 
-from ETLook import constants as c
+from pyWAPOR.ETLook import constants as c
 
 
 def initial_sensible_heat_flux_canopy_daily(rn_24_canopy, t_24_init):

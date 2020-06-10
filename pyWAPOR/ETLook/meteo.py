@@ -7,7 +7,7 @@
 
 """
 from math import sqrt, log, exp
-from ETLook import constants as c
+from pyWAPOR.ETLook import constants as c
 
 
 def air_temperature_kelvin(t_air):

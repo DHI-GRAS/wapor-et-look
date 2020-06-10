@@ -1,5 +1,5 @@
-from ETLook import constants as c
-from ETLook import unstable
+from pyWAPOR.ETLook import constants as c
+from pyWAPOR.ETLook import unstable
 
 
 def interception_mm(P_24, vc, lai, int_max=0.2):

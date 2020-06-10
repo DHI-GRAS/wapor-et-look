@@ -1,4 +1,4 @@
-from ETLook import constants as c
+from pyWAPOR.ETLook import constants as c
 from numpy import log
 
 

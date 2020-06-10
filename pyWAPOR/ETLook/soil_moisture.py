@@ -3,8 +3,8 @@
 
 """
 import math
-from ETLook import constants as c
-from ETLook import unstable
+from pyWAPOR.ETLook import constants as c
+from pyWAPOR.ETLook import unstable
 
 
 def wet_bulb_temperature_inst(t_air_i, t_dew_i):
