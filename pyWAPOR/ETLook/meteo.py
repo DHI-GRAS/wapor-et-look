@@ -1251,3 +1251,23 @@ def wind_speed_blending_height_daily(u_24, z_obs=2, z_b=100):
 
     """
     return wind_speed_blending_height(u_24, z_obs, z_b)
+
+
+def air_pressure_kpa2mbar(p_air_kpa):
+    """Like :func:`p_air`
+
+    Parameters
+    ----------
+    p_air_kpa : float
+        air pressure
+        :math:`Pair_{a}`
+        [kpa]
+
+    Returns
+    -------
+    p_air_mbar : float
+        air pressure
+        :math:`Pair_{a}`
+        [mbar]
+    """
+    return p_air_kpa * 10
