@@ -1,4 +1,5 @@
 import math
+import numpy as np
 from pyWAPOR.ETLook import constants as c
 
 def interception_wm2(int_mm, lh_24):
@@ -69,7 +70,7 @@ def soil_fraction(lai):
     >>> rad.soil_fraction(3.0)
     0.16529888822158656
     """
-    return math.exp(-0.6*lai)
+    return np.exp(-0.6*lai)
 
 
 def longwave_radiation_fao_etref(t_air_k_24, vp_24, trans_24):
