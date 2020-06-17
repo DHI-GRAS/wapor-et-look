@@ -1,0 +1,10 @@
+data_folder = "/data/wapor_test"
+start_date = "2018-04-20"
+end_date = "2018-04-23"
+latitude_extent = [33.5, 34.5]
+longitude_extent = [31.5, 36.0]
+username_earthdata = ""
+password_earthdata = ""
+landcover = "GlobCover"
+prepare_data = true
+run_ETLook = true
