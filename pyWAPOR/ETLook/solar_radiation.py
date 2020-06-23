@@ -1,5 +1,6 @@
 import math
 from math import pi
+import numpy as np
 from pyWAPOR.ETLook import constants as c
 import warnings
 
@@ -280,7 +281,7 @@ def sunset_hour_angle(lat, decl):
         [rad]
 
     """
-    return math.acos(-(math.tan(lat) * math.tan(decl)))
+    return np.arccos(-(np.tan(lat) * np.tan(decl)))
 
 
 def hour_angle(sc, dtime, lon=0):
@@ -485,21 +486,21 @@ def cosine_solar_zenith_angle(ha, decl, lat, slope=0, aspect=0):
     >>> solrad.cosine_solar_zenith_angle(ha, decl=solrad.declination(1), lat=0)
     0.92055394167363314
     """
-    t1 = math.sin(decl) * math.sin(lat) * math.cos(slope)
-    t2 = math.sin(decl) * math.cos(lat) * math.sin(slope) * math.cos(aspect - pi)
-    t3 = math.cos(decl) * math.cos(lat) * math.cos(slope)
-    t4 = math.cos(decl) * math.sin(lat) * math.sin(slope) * math.cos(aspect - pi)
-    t5 = math.cos(decl) * math.sin(slope) * math.sin(aspect - pi)
-    csza = t1 - t2 + t3 * math.cos(ha) + t4 * math.cos(ha) + t5 * math.sin(ha)
+    t1 = np.sin(decl) * np.sin(lat) * np.cos(slope)
+    t2 = np.sin(decl) * np.cos(lat) * np.sin(slope) * np.cos(aspect - pi)
+    t3 = np.cos(decl) * np.cos(lat) * np.cos(slope)
+    t4 = np.cos(decl) * np.sin(lat) * np.sin(slope) * np.cos(aspect - pi)
+    t5 = np.cos(decl) * np.sin(slope) * np.sin(aspect - pi)
+    csza = t1 - t2 + t3 * np.cos(ha) + t4 * np.cos(ha) + t5 * np.sin(ha)
 
     # check if the sun is above the horizon
-    check = math.sin(decl) * math.sin(lat) + math.cos(decl) * \
-        math.cos(lat) * math.cos(ha)
+    check = np.sin(decl) * np.sin(lat) + np.cos(decl) * \
+        np.cos(lat) * np.cos(ha)
 
-    if (csza > 0) & (check >= 0):
-        res = csza
-    else:
-        res = 0
+    nans = np.logical_or(np.isnan(csza), np.isnan(check))
+
+    res = np.where(np.logical_and(csza > 0, check > 0), csza, 0)
+    res[nans] = np.nan
 
     return res
 
@@ -540,8 +541,8 @@ def daily_solar_radiation_toa_flat(decl, iesd, lat, ws):
         [Wm-2]
 
     """
-    ra_flat = (c.sol / pi) * iesd * (ws * math.sin(lat) * math.sin(decl) +
-                                        math.cos(lat) * math.cos(decl) * math.sin(ws))
+    ra_flat = (c.sol / pi) * iesd * (ws * np.sin(lat) * np.sin(decl) +
+                                        np.cos(lat) * np.cos(decl) * np.sin(ws))
 
     return ra_flat
 
@@ -607,10 +608,8 @@ def diffusion_index(trans_24, diffusion_slope=-1.33, diffusion_intercept=1.15):
 
     """
     res = diffusion_intercept + trans_24 * diffusion_slope
-    if res < 0:
-        res = 0
-    elif res > 1:
-        res = 1
+
+    res = np.clip(res, 0, 1)
 
     return res
 
