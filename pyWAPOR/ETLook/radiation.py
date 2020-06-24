@@ -183,7 +183,7 @@ def longwave_radiation_fao(t_air_k_24, vp_24, trans_24, vp_slope=0.14, vp_offset
     68.594182173686306
     """
 
-    return c.sb*t_air_k_24**4*(vp_offset-vp_slope*math.sqrt(0.1*vp_24))*(lw_offset + lw_slope*(trans_24/0.75))
+    return c.sb*t_air_k_24**4*(vp_offset-vp_slope*np.sqrt(0.1*vp_24))*(lw_offset + lw_slope*(trans_24/0.75))
 
 
 def net_radiation(r0, ra_24, l_net, int_wm2):
@@ -435,7 +435,7 @@ def damping_depth(stc, vhc):
     >>> rad.damping_depth(stc=0.9, vhc=volumetric_heat_capacity())
     0.54514600029013294
     """
-    return math.sqrt((2*stc*c.year_sec)/(vhc*2*math.pi))
+    return np.sqrt((2*stc*c.year_sec)/(vhc*2*np.pi))
 
 
 #TODO north-south transition with regard to latitude
@@ -493,13 +493,13 @@ def bare_soil_heat_flux(doy, dd, stc, t_amp_year, lat):
     >>> rad.bare_soil_heat_flux(126, dd, stc, t_amp_year=13.4, lat=40*(math.pi/180.0))
     array([ 45.82350561])
     """
-    if lat > 0:
-        phase = -math.pi/4.0
-    elif lat <= 0:
-        phase = -math.pi/4.0+math.pi
 
-    out = (math.sqrt(2.0)*t_amp_year*stc*
-           math.sin(2*math.pi/c.year_sec*doy*c.day_sec+phase))/dd
+    phase = np.zeros_like(lat)
+    phase = np.where(lat > 0, -np.pi/4.0, phase)
+    phase = np.where(lat <= 0, -np.pi/4.0+np.pi, phase)
+
+    out = (np.sqrt(2.0)*t_amp_year*stc*np.sin(2*np.pi/c.year_sec*doy*c.day_sec+phase))/dd
+
     return out
 
 
@@ -575,13 +575,9 @@ def soil_heat_flux(g0_bs, sf_soil, land_mask, rn_24_soil, trans_24, ra_24, l_net
 
         return g0_24
 
-    if land_mask == 0:
-        g0 = 0
-    elif land_mask == 1:
-        g0 = land_city_func(g0_bs, sf_soil)
-    elif land_mask == 2:
-        g0 = water_func(ra_24, trans_24, l_net, rn_slope, rn_offset, rn_24_soil)
-    elif land_mask == 3:
-        g0 = land_city_func(g0_bs, sf_soil)
+    g0 = np.zeros_like(land_mask)
+    g0 = np.where(land_mask == 1, land_city_func(g0_bs, sf_soil), g0)
+    g0 = np.where(land_mask == 2, water_func(ra_24, trans_24, l_net, rn_slope, rn_offset, rn_24_soil), g0)
+    g0 = np.where(land_mask == 3, land_city_func(g0_bs, sf_soil), g0)
 
     return g0
