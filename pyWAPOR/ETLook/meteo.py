@@ -8,7 +8,7 @@
 """
 from math import sqrt, log, exp
 from pyWAPOR.ETLook import constants as c
-
+import numpy as np
 
 def air_temperature_celcius(t_air_k):
     r"""
@@ -481,7 +481,7 @@ def saturated_vapour_pressure(t_air):
 
     .. plot:: pyplots/meteo/plot_saturated_vapour_pressure.py
     """
-    return 6.108 * exp(((17.27 * t_air) / (237.3 + t_air)))
+    return 6.108 * np.exp(((17.27 * t_air) / (237.3 + t_air)))
 
 
 def saturated_vapour_pressure_daily(t_air_24):
@@ -677,8 +677,8 @@ def vapour_pressure_deficit(svp, vp):
 
     """
     vpd = svp - vp
-    if vpd < 0:
-        vpd = 0
+    vpd[vpd < 0] = 0
+
     return vpd
 
 
@@ -1244,11 +1244,9 @@ def wind_speed_blending_height(u, z_obs=2, z_b=100):
 
     z0m = 0.0171
 
-    ws = (c.k * u) / log(z_obs / z0m) * log(z_b / z0m) / c.k
-    if ws < 1:
-        ws = 1
-    if ws > 150:
-        ws = 150
+    ws = (c.k * u) / np.log(z_obs / z0m) * np.log(z_b / z0m) / c.k
+    ws = np.clip(ws, 1, 150)
+
     return ws
 
 
