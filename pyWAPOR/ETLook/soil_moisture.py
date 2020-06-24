@@ -5,6 +5,7 @@
 import math
 from pyWAPOR.ETLook import constants as c
 from pyWAPOR.ETLook import unstable
+import numpy as np
 
 
 def wet_bulb_temperature_inst(t_air_i, t_dew_i):
@@ -52,7 +53,7 @@ def dew_point_temperature_inst(vp_i):
         :math:`Td_{a}`
         [K]
     """
-    t_dew_i = (237.3 * math.log(vp_i / 6.108)) / (17.27 - math.log(vp_i / 6.108))
+    t_dew_i = (237.3 * np.log(vp_i / 6.108)) / (17.27 - np.log(vp_i / 6.108))
 
     return t_dew_i
 
@@ -104,7 +105,7 @@ def psychometric_constant_iter(lv, p=1013.25, cp=1004, rm=0.622):
 def vapor_pressure_iter(t):
     # t: temperature in Celcius
 
-    vp = 6.108 * math.exp((17.27 * t) / (237.3 + t))
+    vp = 6.108 * np.exp((17.27 * t) / (237.3 + t))
 
     return vp
 
@@ -123,24 +124,23 @@ def wetbulb_temperature_iter(ta, td):
 
     n = 0
 
-    prev_dir = 0
+    prev_dir = np.zeros_like(ta)
     step = (ta - td) / 5.
 
-    while abs(step) > tol:
+    while abs(np.nanmax(step) > tol):
 
         ea_tw = vapor_pressure_iter(tw) - psy * (ta - tw)
 
         direction = (-1) ** ((ea_tw - ea_ta) > 0)
 
-        if prev_dir != direction:
-            step *= 0.5
+        step = np.where(prev_dir != direction, step * 0.5, step)
 
         tw += step * direction
         prev_dir = direction
 
         n += 1
         if n >= maxiter:
-            return math.nan
+            return tw
 
     return tw
 
@@ -198,14 +198,13 @@ def psi_m(y):
     """
     a = 0.33
     b = 0.41
-    pi = math.pi
     x = (y / a) ** (1. / 3.)
-    phi_0 = -math.log(a) + math.sqrt(3) * b * a ** (1. / 3.) * pi / 6.
+    phi_0 = -np.log(a) + np.sqrt(3) * b * a ** (1. / 3.) * np.pi / 6.
     res = (
-        math.log(a + y)
+        np.log(a + y)
         - 3 * b * y ** (1. / 3.)
-        + (b * a ** (1. / 3.)) / 2. * math.log((1 + x) ** 2 / (1 - x + x ** 2))
-        + math.sqrt(3) * b * a ** (1. / 3.) * math.atan((2 * x - 1) / math.sqrt(3))
+        + (b * a ** (1. / 3.)) / 2. * np.log((1 + x) ** 2 / (1 - x + x ** 2))
+        + np.sqrt(3) * b * a ** (1. / 3.) * np.arctan((2 * x - 1) / np.sqrt(3))
         + phi_0
     )
     return res
@@ -253,7 +252,7 @@ def psi_h(y):
     c = 0.33
     d = 0.057
     n = 0.78
-    return ((1 - d) / n) * math.log((c + y ** n) / c)
+    return ((1 - d) / n) * np.log((c + y ** n) / c)
 
 
 def initial_friction_velocity_inst(u_b_i, z0m, disp, z_b=100):
@@ -523,10 +522,9 @@ def wind_speed_blending_height_bare(u_i, z0m_bare=0.001, z_obs=10, z_b=100):
         [m/s]
     """
     ws = (c.k * u_i) / math.log(z_obs / z0m_bare) * math.log(z_b / z0m_bare) / c.k
-    if ws < 1:
-        ws = 1
-    elif ws > 150:
-        ws = 150
+
+    ws = np.clip(ws, 0, 150)
+
     return ws
 
 
@@ -565,11 +563,10 @@ def wind_speed_blending_height_full_inst(u_i, z0m_full=0.1, z_obs=10, z_b=100):
         :math:`u_{b,i,full}`
         [m s-1]
     """
-    ws = (c.k * u_i) / math.log(z_obs / z0m_full) * math.log(z_b / z0m_full) / c.k
-    if ws < 1:
-        ws = 1
-    elif ws > 150:
-        ws = 150
+    ws = (c.k * u_i) / math.log(z_obs / z0m_full) * np.log(z_b / z0m_full) / c.k
+
+    ws = np.clip(ws, 1, 150)
+
     return ws
 
 
@@ -1114,7 +1111,6 @@ def soil_moisture_from_maximum_temperature(lst_max, lst, lst_min):
         [%]
 
     """
-    ratio = ne.evaluate("(lst - lst_min) / (lst_max - lst_min)")
-    ratio[ratio < 0] = 0
-    ratio[ratio > 1] = 1
+    ratio = (lst - lst_min) / (lst_max - lst_min)
+    ratio = np.clip(ratio, 0, 1)
     return 1 - ratio
