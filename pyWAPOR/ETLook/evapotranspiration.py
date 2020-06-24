@@ -1,5 +1,6 @@
 from pyWAPOR.ETLook import constants as c
 from pyWAPOR.ETLook import unstable
+import numpy as np
 
 
 def interception_mm(P_24, vc, lai, int_max=0.2):
@@ -57,10 +58,12 @@ def interception_mm(P_24, vc, lai, int_max=0.2):
 
 
     """
-    if (lai == 0) | (vc == 0) | (P_24 == 0):
-        res = 0
-    else:
-        res = int_max * lai * (1 - (1 / (1 + ((vc * P_24) / (int_max * lai)))))
+    zero_mask = np.logical_or(np.logical_or(lai == 0, vc == 0), P_24 == 0)
+
+    res = int_max * lai * (1 - (1 / (1 + ((vc * P_24) / (int_max * lai)))))
+
+    res[zero_mask] = 0
+
     return res
 
 
