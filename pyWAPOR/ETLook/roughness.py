@@ -250,15 +250,11 @@ def displacement_height(lai, z_obst, land_mask=1, c1=1):
     """
 
     def disp_func(l):
-        return z_obst * (1-(1-math.exp(-math.sqrt(c1*l)))/math.sqrt(c1*l))
+        return z_obst * (1-(1-np.exp(-np.sqrt(c1*l)))/np.sqrt(c1*l))
 
-    if (land_mask == 0) | (lai == 0):
-        disp = 0
-    elif land_mask == 1:
-        disp = disp_func(lai)
-    elif land_mask == 2:
-        disp = 0
-    elif land_mask == 3:
-        disp = (2./3.)*z_obst
+    disp = np.zeros_like(land_mask)
+    disp = np.where(land_mask == 1, disp_func(lai), disp)
+    disp = np.where(land_mask == 2, 0, disp)
+    disp = np.where(land_mask == 3, (2./3.)*z_obst, disp)
 
     return disp

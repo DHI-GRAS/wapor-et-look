@@ -1,5 +1,5 @@
 import math
-
+import numpy as np
 from pyWAPOR.ETLook import constants as c
 
 
@@ -105,7 +105,7 @@ def initial_friction_velocity_daily(u_b_24, z0m, disp, z_b=100):
         :math:`u_{*}`
         [m s-1]
     """
-    return (c.k * u_b_24) / (math.log((z_b - disp) / z0m))
+    return (c.k * u_b_24) / (np.log((z_b - disp) / z0m))
 
 
 def initial_friction_velocity_soil_daily(u_b_24, disp, z_b=100):
@@ -139,7 +139,7 @@ def initial_friction_velocity_soil_daily(u_b_24, disp, z_b=100):
         :math:`u_{*}`
         [m s-1]
     """
-    return (c.k * u_b_24) / (math.log((z_b - disp) / c.z0_soil))
+    return (c.k * u_b_24) / (np.log((z_b - disp) / c.z0_soil))
 
 
 def monin_obukhov_length(h_flux, ad, u_star, t_air_k):
@@ -241,10 +241,10 @@ def stability_factor(x_b):
         [-]
     """
     return (
-        2 * math.log((1 + x_b) / 2)
-        + math.log((1 + x_b ** 2) / 2)
-        - 2 * math.atan(x_b)
-        + 0.5 * math.pi
+        2 * np.log((1 + x_b) / 2)
+        + np.log((1 + x_b ** 2) / 2)
+        - 2 * np.arctan(x_b)
+        + 0.5 * np.pi
     )
 
 
@@ -301,7 +301,7 @@ def stability_correction_heat_obs(x_b_obs):
         :math:`\psi_{h,obs}`
         [-]
     """
-    return 2 * math.log((1 + x_b_obs ** 2) / 2)
+    return 2 * np.log((1 + x_b_obs ** 2) / 2)
 
 
 def friction_velocity(u_b, z_b, z0m, disp, sf):
@@ -342,7 +342,7 @@ def friction_velocity(u_b, z_b, z0m, disp, sf):
         :math:`u_{*}`
         [m s-1]
     """
-    return (c.k * u_b) / (math.log((z_b - disp) / z0m) - sf)
+    return (c.k * u_b) / (np.log((z_b - disp) / z0m) - sf)
 
 
 def ra_canopy(
