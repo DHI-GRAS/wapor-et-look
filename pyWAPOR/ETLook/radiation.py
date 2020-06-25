@@ -1,4 +1,3 @@
-import math
 import numpy as np
 from pyWAPOR.ETLook import constants as c
 

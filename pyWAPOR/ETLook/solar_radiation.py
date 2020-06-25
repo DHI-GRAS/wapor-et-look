@@ -1,5 +1,3 @@
-import math
-from math import pi
 import numpy as np
 from pyWAPOR.ETLook import constants as c
 import warnings
@@ -24,7 +22,7 @@ def longitude_rad(lon_deg):
         [rad]
 
     """
-    return lon_deg * pi/180.0
+    return lon_deg * np.pi/180.0
 
 
 def latitude_rad(lat_deg):
@@ -46,7 +44,7 @@ def latitude_rad(lat_deg):
         [rad]
 
     """
-    return lat_deg * pi/180.0
+    return lat_deg * np.pi/180.0
 
 
 def slope_rad(slope_deg):
@@ -68,7 +66,7 @@ def slope_rad(slope_deg):
         [rad]
 
     """
-    return slope_deg * pi/180.0
+    return slope_deg * np.pi/180.0
 
 
 def aspect_rad(aspect_deg):
@@ -89,7 +87,7 @@ def aspect_rad(aspect_deg):
         :math:`\alpha`
         [rad]
     """
-    return aspect_deg * pi/180.0
+    return aspect_deg * np.pi/180.0
 
 
 def declination(doy):
@@ -120,7 +118,7 @@ def declination(doy):
     >>> solrad.declination(180)
     0.40512512455439242
     """
-    return 0.409 * math.sin(2 * pi / 365 * doy - 1.39)
+    return 0.409 * np.sin(2 * np.pi / 365 * doy - 1.39)
 
 
 def earth_sun_distance(doy):
@@ -155,7 +153,7 @@ def earth_sun_distance(doy):
                    'use "iesd" (solar_radiation.inverse_earth_sun_distance) instead'),
                   DeprecationWarning, stacklevel=2)
 
-    return 1 + 0.033 * math.cos(doy * 2 * pi / 365.0)
+    return 1 + 0.033 * np.cos(doy * 2 * np.pi / 365.0)
 
 
 def inverse_earth_sun_distance(doy):
@@ -186,7 +184,7 @@ def inverse_earth_sun_distance(doy):
     0.96703055420162642
     """
 
-    return 1 + 0.033 * math.cos(doy * 2 * pi / 365.0)
+    return 1 + 0.033 * np.cos(doy * 2 * np.pi / 365.0)
 
 
 def actual_earth_sun_distance(iesd):
@@ -251,8 +249,8 @@ def seasonal_correction(doy):
     >>> solrad.seasonal_correction(180)
     -0.052343379605521212
     """
-    b = 2 * pi * (doy - 81) / 364.0
-    return 0.1645 * math.sin(2 * b) - 0.1255 * math.cos(b) - 0.025 * math.sin(b)
+    b = 2 * np.pi * (doy - 81) / 364.0
+    return 0.1645 * np.sin(2 * b) - 0.1255 * np.cos(b) - 0.025 * np.sin(b)
 
 
 def sunset_hour_angle(lat, decl):
@@ -320,8 +318,8 @@ def hour_angle(sc, dtime, lon=0):
     >>> solrad.hour_angle(sc=solrad.seasonal_correction(75), dtime=11.4)
     -0.19793970172084141
     """
-    dtime = dtime + (lon / (15*pi/180.0))
-    return (pi / 12.0) * (dtime + sc - 12.0)
+    dtime = dtime + (lon / (15*np.pi/180.0))
+    return (np.pi / 12.0) * (dtime + sc - 12.0)
 
 
 def inst_solar_radiation_toa(csza, iesd):
@@ -487,10 +485,10 @@ def cosine_solar_zenith_angle(ha, decl, lat, slope=0, aspect=0):
     0.92055394167363314
     """
     t1 = np.sin(decl) * np.sin(lat) * np.cos(slope)
-    t2 = np.sin(decl) * np.cos(lat) * np.sin(slope) * np.cos(aspect - pi)
+    t2 = np.sin(decl) * np.cos(lat) * np.sin(slope) * np.cos(aspect - np.pi)
     t3 = np.cos(decl) * np.cos(lat) * np.cos(slope)
-    t4 = np.cos(decl) * np.sin(lat) * np.sin(slope) * np.cos(aspect - pi)
-    t5 = np.cos(decl) * np.sin(slope) * np.sin(aspect - pi)
+    t4 = np.cos(decl) * np.sin(lat) * np.sin(slope) * np.cos(aspect - np.pi)
+    t5 = np.cos(decl) * np.sin(slope) * np.sin(aspect - np.pi)
     csza = t1 - t2 + t3 * np.cos(ha) + t4 * np.cos(ha) + t5 * np.sin(ha)
 
     # check if the sun is above the horizon
@@ -541,7 +539,7 @@ def daily_solar_radiation_toa_flat(decl, iesd, lat, ws):
         [Wm-2]
 
     """
-    ra_flat = (c.sol / pi) * iesd * (ws * np.sin(lat) * np.sin(decl) +
+    ra_flat = (c.sol / np.pi) * iesd * (ws * np.sin(lat) * np.sin(decl) +
                                         np.cos(lat) * np.cos(decl) * np.sin(ws))
 
     return ra_flat
@@ -644,7 +642,7 @@ def daily_total_solar_radiation(ra_24_toa, ra_24_toa_flat, diffusion_index, tran
     Returns
     -------
     ra_24 : float
-        daily solar radiation
+        daily solar radiationnp.
         :math:`S^{\downarrow}`
         [Wm-2]
 

@@ -2,7 +2,6 @@
     The soil_moisture module contains all functions related to soil moisture data components.
 
 """
-import math
 from pyWAPOR.ETLook import constants as c
 from pyWAPOR.ETLook import unstable
 import numpy as np
@@ -76,7 +75,7 @@ def dew_point_temperature_coarse_inst(vp_i):
         :math:`Td_{a}`
         [K]
     """
-    t_dew_i = (237.3 * math.log(vp_i / 6.108)) / (17.27 - math.log(vp_i / 6.108))
+    t_dew_i = (237.3 * np.log(vp_i / 6.108)) / (17.27 - np.log(vp_i / 6.108))
 
     return t_dew_i
 
@@ -290,7 +289,7 @@ def initial_friction_velocity_inst(u_b_i, z0m, disp, z_b=100):
         :math:`u_{*,i}`
         [m s-1]
     """
-    return (c.k * u_b_i) / (math.log((z_b - disp) / z0m))
+    return (c.k * u_b_i) / (np.log((z_b - disp) / z0m))
 
 
 def atmospheric_emissivity_inst(vp_i, t_air_k_i):
@@ -521,7 +520,7 @@ def wind_speed_blending_height_bare(u_i, z0m_bare=0.001, z_obs=10, z_b=100):
         :math:`u_{b,i,bare}`
         [m/s]
     """
-    ws = (c.k * u_i) / math.log(z_obs / z0m_bare) * math.log(z_b / z0m_bare) / c.k
+    ws = (c.k * u_i) / np.log(z_obs / z0m_bare) * np.log(z_b / z0m_bare) / c.k
 
     ws = np.clip(ws, 0, 150)
 
@@ -563,7 +562,7 @@ def wind_speed_blending_height_full_inst(u_i, z0m_full=0.1, z_obs=10, z_b=100):
         :math:`u_{b,i,full}`
         [m s-1]
     """
-    ws = (c.k * u_i) / math.log(z_obs / z0m_full) * np.log(z_b / z0m_full) / c.k
+    ws = (c.k * u_i) / np.log(z_obs / z0m_full) * np.log(z_b / z0m_full) / c.k
 
     ws = np.clip(ws, 1, 150)
 
@@ -760,7 +759,7 @@ def aerodynamical_resistance_full(u_i, L_full, z0m_full=0.1, disp_full=0.667, z_
     z4 = (z_obs - disp_full) / (z0m_full / 7)
     z5 = (z0m_full / 7) / L_full
     res = (
-        (math.log(z1) - psi_m(-z2) + psi_m(-z3)) * (math.log(z4) - psi_h(-z2) + psi_h(-z5))
+        (np.log(z1) - psi_m(-z2) + psi_m(-z3)) * (np.log(z4) - psi_h(-z2) + psi_h(-z5))
     ) / (c.k ** 2 * u_i)
 
     return res
@@ -811,7 +810,7 @@ def aerodynamical_resistance_bare(u_i, L_bare, z0m_bare=0.001, disp_bare=0.0, z_
 
     z1 = (z_obs - disp_bare) / z0m_bare
     z2 = (z_obs - disp_bare) / L_bare
-    res = ((math.log(z1) - psi_m(-z2)) * (math.log(z1) - psi_h(-z2))) / (c.k ** 2 * u_i)
+    res = ((np.log(z1) - psi_m(-z2)) * (np.log(z1) - psi_h(-z2))) / (c.k ** 2 * u_i)
 
     return res
 
@@ -851,8 +850,8 @@ def wind_speed_soil_inst(u_i, L_bare, z_obs=10):
     z0_soil = 0.01
     z0_free = 0.1
     return u_i * (
-        (math.log(z0_free / z0_soil))
-        / (math.log(z_obs / z0_soil) - psi_m(-z0_free / L_bare))
+        (np.log(z0_free / z0_soil))
+        / (np.log(z_obs / z0_soil) - psi_m(-z0_free / L_bare))
     )
 
 

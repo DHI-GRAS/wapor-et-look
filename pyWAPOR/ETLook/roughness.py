@@ -2,7 +2,6 @@
     The roughness module contains all functions related to surface roughness
 
 """
-import math
 import numpy as np
 
 def orographic_roughness(slope, dem_resolution=1000.0):

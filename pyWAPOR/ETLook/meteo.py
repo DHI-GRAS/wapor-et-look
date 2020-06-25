@@ -6,7 +6,6 @@
     extension
 
 """
-from math import sqrt, log, exp
 from pyWAPOR.ETLook import constants as c
 import numpy as np
 

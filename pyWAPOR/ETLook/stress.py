@@ -1,4 +1,3 @@
-import math
 import numpy as np
 
 def stress_radiation(ra_24):
