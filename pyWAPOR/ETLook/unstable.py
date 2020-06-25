@@ -433,29 +433,22 @@ def ra_canopy(
     u_star_start = u_star_init
     iteration = 0
     epsilon = 10.0
-    while (iteration < iter_ra) and (epsilon > -10):
+    while (iteration < iter_ra) and (np.nanmax(epsilon) > 0.01):
         iteration += 1
         monin = monin_obukhov_length(h_flux, ad, u_star_start, t_air_k)
-        if monin > 0:
-            x_b = 1
-        else:
-            x_b = stability_parameter(monin, disp, z_b)
+        x_b = np.where(monin > 0, 1, stability_parameter(monin, disp, z_b))
         sf = stability_factor(x_b)
         u_star = friction_velocity(u_b, z_b, z0m, disp, sf)
         epsilon = abs(u_star - u_star_start)
         u_star_start = u_star
 
-    if monin > 0:
-        x_b_obs = 1
-        sf_obs = 0
-    else:
-        x_b_obs = stability_parameter_obs(monin, z_obs)
-        sf_obs = stability_correction_heat_obs(x_b_obs)
+    x_b_obs = np.where(monin <= 0, stability_parameter_obs(monin, z_obs), 1)
+    sf_obs = np.where(monin <= 0, stability_correction_heat_obs(x_b_obs), 0)
 
-    disp = min(disp, 1.5)
-    ra = (math.log((z_obs - disp) / (0.1 * z0m)) - sf_obs) / (c.k * u_star)
-    ra = min(ra, 500)
-    ra = max(ra, 25)
+    disp = np.minimum(disp, 1.5)
+    ra = (np.log((z_obs - disp) / (0.1 * z0m)) - sf_obs) / (c.k * u_star)
+    ra = np.minimum(ra, 500)
+    ra = np.minimum(ra, 25)
 
     return ra
 
@@ -565,7 +558,7 @@ def transpiration(
     epsilon = 10.0
     h_start = h_canopy_24_init
 
-    while (iteration < iter_h) and (epsilon > -10):
+    while (iteration < iter_h) and (np.nanmax(epsilon) > 0.01):
         iteration += 1
         ra_canopy_start = ra_canopy(
             h_start, t_air_k_24, u_star_24_init, ad_24, z0m, disp, u_b_24, z_obs, z_b
@@ -665,29 +658,22 @@ def ra_soil(
     u_star_start = u_star_24_init
     iteration = 0
     epsilon = 10
-    while (iteration < iter_ra) and (epsilon > -10):
+    while (iteration < iter_ra) and (np.nanmax(epsilon) > 0.01):
         iteration += 1
         monin = monin_obukhov_length(h_flux, ad, u_star_start, t_air_k)
-        if monin > 0:
-            x_b = 0
-        else:
-            x_b = stability_parameter(monin, disp, z_b)
+        x_b = np.where(monin > 0, 0, stability_parameter(monin, disp, z_b))
         sf = stability_factor(x_b)
         u_star = friction_velocity(u_b, z_b, c.z0_soil, disp, sf)
         epsilon = abs(u_star - u_star_start)
         u_star_start = u_star
 
-    if monin > 0:
-        x_b_obs = 1
-        sf_obs = 0
-    else:
-        x_b_obs = stability_parameter_obs(monin, z_obs)
-        sf_obs = stability_correction_heat_obs(x_b_obs)
+    x_b_obs = np.where(monin <= 0, stability_parameter_obs(monin, z_obs), 1)
+    sf_obs = np.where(monin <= 0, stability_correction_heat_obs(x_b_obs), 0)
 
     # 1.5 limit is from ETLook IDL
-    disp = min(disp, 1.5)
-    ra = (math.log((z_obs - disp) / (0.1 * c.z0_soil)) - sf_obs) / (c.k * u_star)
-    ra = max(ra, 25)
+    disp = np.minimum(disp, 1.5)
+    ra = (np.log((z_obs - disp) / (0.1 * c.z0_soil)) - sf_obs) / (c.k * u_star)
+    ra = np.maximum(ra, 25)
 
     return ra
 
