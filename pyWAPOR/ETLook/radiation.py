@@ -568,7 +568,7 @@ def soil_heat_flux(g0_bs, sf_soil, land_mask, rn_24_soil, trans_24, ra_24, l_net
     def water_func(ra_24, trans_24, l_net, rn_slope, rn_offset, rn_24_soil):
         rn_24_clear = 0.95 * ra_24 / trans_24 - l_net
         g0_24_clear = rn_24_clear * rn_slope + rn_offset
-        g0_24_clear = min(g0_24_clear, 0.5 * rn_24_clear)
+        g0_24_clear = np.minimum(g0_24_clear, 0.5 * rn_24_clear)
 
         # adjust water heat storage to current net radiation conditions
         g0_24 = g0_24_clear * rn_24_soil / rn_24_clear

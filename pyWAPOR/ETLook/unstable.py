@@ -782,7 +782,7 @@ def evaporation(
     iteration = 0
     epsilon = 10
     h_start = h_soil_24_init
-    while (iteration < iter_h) and (epsilon > -10):
+    while (iteration < iter_h) and (np.nanmax(epsilon) > 0.1):
         iteration += 1
         ra_soil_start = ra_soil(
             h_start, t_air_k_24, u_star_24_soil_init, ad_24, disp, u_b_24, z_obs, z_b
