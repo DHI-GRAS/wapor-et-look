@@ -497,7 +497,7 @@ def cosine_solar_zenith_angle(ha, decl, lat, slope=0, aspect=0):
 
     nans = np.logical_or(np.isnan(csza), np.isnan(check))
 
-    res = np.where(np.logical_and(csza > 0, check > 0), csza, 0)
+    res = np.where(np.logical_and(csza > 0, check >= 0), csza, 0)
     res[nans] = np.nan
 
     return res
