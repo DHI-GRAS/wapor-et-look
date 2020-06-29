@@ -126,7 +126,7 @@ def wetbulb_temperature_iter(ta, td):
     prev_dir = np.zeros_like(ta)
     step = (ta - td) / 5.
 
-    while abs(np.nanmax(step) > tol):
+    while abs(np.nanmax(step)) > tol:
 
         ea_tw = vapor_pressure_iter(tw) - psy * (ta - tw)
 
@@ -522,7 +522,7 @@ def wind_speed_blending_height_bare(u_i, z0m_bare=0.001, z_obs=10, z_b=100):
     """
     ws = (c.k * u_i) / np.log(z_obs / z0m_bare) * np.log(z_b / z0m_bare) / c.k
 
-    ws = np.clip(ws, 0, 150)
+    ws = np.clip(ws, 1, 150)
 
     return ws
 
