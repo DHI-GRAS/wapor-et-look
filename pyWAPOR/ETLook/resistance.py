@@ -52,7 +52,7 @@ def atmospheric_canopy_resistance(lai_eff, stress_rad, stress_vpd,
     """
 
     bulk_stress = stress_rad * stress_temp * stress_vpd
-    max_mask = (bulk_stress == 0) | (lai_eff == 0)
+    max_mask = np.logical_or(bulk_stress == 0, lai_eff == 0)
 
     r_canopy_0 = (rs_min / lai_eff) / bulk_stress
     r_canopy_0[max_mask] = rcan_max
@@ -96,8 +96,7 @@ def canopy_resistance(r_canopy_0, stress_moist, rcan_max=1000000.):
     272.5
     """
 
-    r_canopy = r_canopy_0 / stress_moist
-    r_canopy[stress_moist==0] = rcan_max
+    r_canopy = np.where(stress_moist == 0, rcan_max, r_canopy_0/stress_moist)
 
     return r_canopy
 
@@ -141,7 +140,7 @@ def soil_resistance(se_top, land_mask=1, r_soil_pow=-2.1, r_soil_min=800):
     >>> res.soil_resistance(se_top=0.9)
     998.1153098304111
     """
-    res = r_soil_min * se_top ** r_soil_pow
-    res = np.where(land_mask == 2, 0, res)
+    res = np.ones(land_mask.shape) * r_soil_min * se_top ** r_soil_pow
+    res[land_mask == 2] = 0
 
     return res
