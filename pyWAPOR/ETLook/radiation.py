@@ -493,9 +493,7 @@ def bare_soil_heat_flux(doy, dd, stc, t_amp_year, lat):
     array([ 45.82350561])
     """
 
-    phase = np.zeros_like(lat)
-    phase = np.where(lat > 0, -np.pi/4.0, phase)
-    phase = np.where(lat <= 0, -np.pi/4.0+np.pi, phase)
+    phase = np.where(lat > 0, -np.pi/4.0, -np.pi/4.0+np.pi)
 
     out = (np.sqrt(2.0)*t_amp_year*stc*np.sin(2*np.pi/c.year_sec*doy*c.day_sec+phase))/dd
 
