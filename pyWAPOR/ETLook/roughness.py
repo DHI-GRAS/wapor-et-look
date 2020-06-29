@@ -103,9 +103,8 @@ def roughness_length(lai, z_oro, z_obst, z_obst_max, land_mask=1):
         veg = 0.193
         z_dif = zo-d
 
-        term0 = 0.41**2/((np.log(z_dif/(0.002*zo_max))+veg)**2)
-        term1 = np.where(term0 < 1, term0, 1) + 0.35*l/2
-        term2 = np.exp(0.41/np.where(np.sqrt(term1) < 0.3, np.sqrt(term1), 0.3)-veg)
+        term1 = np.minimum(0.41**2/((np.log(z_dif/(0.002*zo_max))+veg)**2), 1.0) + 0.35*l/2
+        term2 = np.exp(0.41/np.minimum(np.sqrt(term1), 0.3)-veg)
 
         return z_dif/term2+oro
 
@@ -115,7 +114,7 @@ def roughness_length(lai, z_oro, z_obst, z_obst_max, land_mask=1):
 
     z0m = (1. / 7.) * z_obst_max + z_oro
     z0m[land_mask == 0] = 0
-    z0m = np.where(land_mask == 1, veg_roughness(z_obst, disp, z_obst_max, lai, z_oro), 0)
+    z0m = np.where(land_mask == 1, veg_roughness(z_obst, disp, z_obst_max, lai, z_oro), z0m)
     z0m[land_mask == 2] = 0.0001
 
     return z0m
