@@ -642,7 +642,7 @@ def daily_total_solar_radiation(ra_24_toa, ra_24_toa_flat, diffusion_index, tran
     Returns
     -------
     ra_24 : float
-        daily solar radiationnp.
+        daily solar radiation
         :math:`S^{\downarrow}`
         [Wm-2]
 
