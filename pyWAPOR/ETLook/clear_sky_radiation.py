@@ -173,7 +173,7 @@ def relative_optical_airmass(p_air_i, p_air_0_i, h0ref):
     .. [KaYo89] Kasten F., and T.A. Young. 1989, Revised optical air mass tables
        and approximation formula, Applied Optics 28:4735-8
     """
-    h0ref_rad = h0ref * pi/180.
+    h0ref_rad = h0ref * np.pi/180.
 
     m = (p_air_i/p_air_0_i)/(np.sin(h0ref_rad) + 0.50572 * (h0ref + 6.07995)**-1.6364)
     m[h0ref_rad <= 0] = 64
@@ -284,7 +284,7 @@ def solar_elevation_angle(lat, decl, ha):
 
     h0_rad = np.arcsin(sin_h0)
 
-    h0 = h0_rad * 180 / pi
+    h0 = h0_rad * 180 / np.pi
 
     return h0
 
@@ -327,8 +327,7 @@ def rayleigh_optical_thickness(m):
     """
 
     rotm = 1 / (10.4 + 0.718 * m)
-    small_m = 1/(6.6296 + 1.7513*m - 0.1202*m**2 + 0.0065*m**3 - 0.00013*m**4)
-    rotm[m <= 20] = small_m[m <= 20]
+    rotm = np.where(m <= 20, 1/(6.6296 + 1.7513*m - 0.1202*m**2 + 0.0065*m**3 - 0.00013*m**4), rotm)
 
     return rotm
 
@@ -522,14 +521,11 @@ def diffuse_irradiance_horizontal_clear(G0, Tl2, h0):
     Examples
     --------
     """
-    h0_rad = h0 * pi / 180.
+    h0_rad = h0 * np.pi / 180.
     TnTl2 = -0.015843 + 0.030543 * Tl2 + 0.0003797 * Tl2**2
 
-    A1d = 0.26463 - 0.061581 * Tl2 + 0.0031408 * Tl2**2
-
-    A1 = A1d.copy()
-    A1[(A1d * TnTl2) < 0.0022] = 0.0022 / TnTl2[(A1d * TnTl2) < 0.0022]
-
+    A1 = 0.26463 - 0.061581 * Tl2 + 0.0031408 * Tl2**2
+    A1 = np.where((A1 * TnTl2) < 0.0022, 0.0022 / TnTl2, A1)
     A2 = 2.04020 + 0.018945 * Tl2 - 0.011161 * Tl2**2
     A3 = -1.3025 + 0.039231 * Tl2 + 0.0085079 * Tl2**2
 
