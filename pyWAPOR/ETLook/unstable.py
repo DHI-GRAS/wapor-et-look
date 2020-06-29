@@ -446,8 +446,7 @@ def ra_canopy(
 
     disp = np.minimum(disp, 1.5)
     ra = (np.log((z_obs - disp) / (0.1 * z0m)) - sf_obs) / (c.k * u_star)
-    ra = np.minimum(ra, 500)
-    ra = np.minimum(ra, 25)
+    ra = np.clip(ra, 25, 500)
 
     return ra
 
