@@ -357,7 +357,7 @@ def saturated_vapour_pressure_minimum(t_air_min_coarse):
     t_air_min_coarse : float
         daily minimum air temperature
         :math:`T_{a,min}`
-        [K]
+        [C]
 
     Returns
     -------
@@ -367,7 +367,7 @@ def saturated_vapour_pressure_minimum(t_air_min_coarse):
         [mbar]
 
     """
-    return saturated_vapour_pressure(t_air_min_coarse-c.zero_celcius)
+    return saturated_vapour_pressure(t_air_min_coarse)
 
 
 def saturated_vapour_pressure_maximum(t_air_max_coarse):
@@ -379,7 +379,7 @@ def saturated_vapour_pressure_maximum(t_air_max_coarse):
     t_air_max_coarse : float
         daily maximum air temperature
         :math:`T_{a,max}`
-        [K]
+        [C]
 
     Returns
     -------
@@ -389,7 +389,7 @@ def saturated_vapour_pressure_maximum(t_air_max_coarse):
         [mbar]
 
     """
-    return saturated_vapour_pressure(t_air_max_coarse-c.zero_celcius)
+    return saturated_vapour_pressure(t_air_max_coarse)
 
 
 def saturated_vapour_pressure_average(svp_24_max, svp_24_min):
