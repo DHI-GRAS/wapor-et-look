@@ -5,8 +5,8 @@ zero_celcius = 273.15     # 0 degrees C in K
 t_ref = 293.15            # reference temperature 20 degrees celcius
 p_ref = 1013.25           # reference pressure in mbar
 z_ref = 0                 # sea level m
-lapse_dew = -0.002        # lapse rate for dew point K m-1
-lapse = -0.0065           # lapse rate temperature K m-1
+
+lapse = -0.0065           # lapse rate K m-1
 g = 9.807                 # gravity m s-2
 gc_spec = 287.0           # gas constant J kg-1 K-1
 gc_dry = 2.87             # dry air gas constant mbar K-1 m3 kg-1

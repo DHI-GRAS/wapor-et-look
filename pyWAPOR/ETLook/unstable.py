@@ -1,6 +1,6 @@
-import math
 import numpy as np
 from pyWAPOR.ETLook import constants as c
+
 
 def initial_sensible_heat_flux_canopy_daily(rn_24_canopy, t_24_init):
     r"""
@@ -16,7 +16,7 @@ def initial_sensible_heat_flux_canopy_daily(rn_24_canopy, t_24_init):
     ----------
     rn_24_canopy : float
         daily net radiation for the canopy
-        :math:`Q^{canopy}^{*}`
+        :math:`Q_{canopy}^{*}`
         [W m-2]
     t_24_init : float
         initial estimate of daily transpiration
@@ -48,7 +48,7 @@ def initial_sensible_heat_flux_soil_daily(rn_24_soil, e_24_init, g0_24):
     ----------
     rn_24_soil : float
         daily net radiation for the soil
-        :math:`Q^{canopy}^{*}`
+        :math:`Q_{canopy}^{*}`
         [W m-2]
     g0_24 : float
         daily soil heat flux
@@ -443,11 +443,10 @@ def ra_canopy(
 
     x_b_obs = np.where(monin <= 0, stability_parameter_obs(monin, z_obs), 1)
     sf_obs = np.where(monin <= 0, stability_correction_heat_obs(x_b_obs), 0)
-    
+
     disp = np.minimum(disp, 1.5)
     ra = (np.log((z_obs - disp) / (0.1 * z0m)) - sf_obs) / (c.k * u_star)
-    ra = np.minimum(ra, 500)
-    ra = np.maximum(ra, 25)
+    ra = np.clip(ra, 25, 500)
 
     return ra
 
@@ -467,7 +466,7 @@ def transpiration(
     u_b_24,
     z_obs=2,
     z_b=100,
-    iter_h=5,
+    iter_h=3,
 ):
     r"""
     Computes the transpiration using an iterative approach. The iteration is
@@ -660,14 +659,14 @@ def ra_soil(
     while (iteration < iter_ra) and (np.nanmax(epsilon) > 0.01):
         iteration += 1
         monin = monin_obukhov_length(h_flux, ad, u_star_start, t_air_k)
-        x_b = np.where(monin > 0, 0, stability_parameter(monin, disp, z_b)) #!!! monin > 0 is 0? while in ra_canopy this is 1??
+        x_b = np.where(monin > 0, 0, stability_parameter(monin, disp, z_b))
         sf = stability_factor(x_b)
         u_star = friction_velocity(u_b, z_b, c.z0_soil, disp, sf)
         epsilon = abs(u_star - u_star_start)
         u_star_start = u_star
 
     x_b_obs = np.where(monin <= 0, stability_parameter_obs(monin, z_obs), 1)
-    sf_obs = np.where(monin <= 0, stability_correction_heat_obs(x_b_obs), 0)   
+    sf_obs = np.where(monin <= 0, stability_correction_heat_obs(x_b_obs), 0)
 
     # 1.5 limit is from ETLook IDL
     disp = np.minimum(disp, 1.5)

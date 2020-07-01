@@ -1,4 +1,3 @@
-import math
 import numpy as np
 from pyWAPOR.ETLook import constants as c
 
@@ -182,9 +181,8 @@ def longwave_radiation_fao(t_air_k_24, vp_24, trans_24, vp_slope=0.14, vp_offset
     >>> rad.longwave_radiation_fao(t_air_k=302.5, vp=10.3, trans_24=0.6)
     68.594182173686306
     """
-    l_net = c.sb*t_air_k_24**4*(vp_offset-vp_slope*np.sqrt(0.1*vp_24))*(lw_offset + lw_slope*(trans_24/0.75))
-    
-    return l_net
+
+    return c.sb*t_air_k_24**4*(vp_offset-vp_slope*np.sqrt(0.1*vp_24))*(lw_offset + lw_slope*(trans_24/0.75))
 
 
 def net_radiation(r0, ra_24, l_net, int_wm2):
@@ -317,7 +315,7 @@ def net_radiation_grass(ra_24, l_net, r0_grass=0.23):
         [wm-2]
     r0_grass : float
         albedo for reference grass
-        :math:`alpha_{0}_grass`
+        :math:`\alpha_{0, grass}`
         [-]
 
     Returns
@@ -494,10 +492,11 @@ def bare_soil_heat_flux(doy, dd, stc, t_amp_year, lat):
     >>> rad.bare_soil_heat_flux(126, dd, stc, t_amp_year=13.4, lat=40*(math.pi/180.0))
     array([ 45.82350561])
     """
+
     phase = np.where(lat > 0, -np.pi/4.0, -np.pi/4.0+np.pi)
 
-    out = (np.sqrt(2.0)*t_amp_year*stc*
-           np.sin(2*np.pi/c.year_sec*doy*c.day_sec+phase))/dd
+    out = (np.sqrt(2.0)*t_amp_year*stc*np.sin(2*np.pi/c.year_sec*doy*c.day_sec+phase))/dd
+
     return out
 
 
@@ -573,8 +572,9 @@ def soil_heat_flux(g0_bs, sf_soil, land_mask, rn_24_soil, trans_24, ra_24, l_net
 
         return g0_24
 
-
-    g0 = np.where(np.logical_or(land_mask == 1, land_mask == 3), land_city_func(g0_bs, sf_soil), 0)
+    g0 = np.zeros_like(land_mask)
+    g0 = np.where(land_mask == 1, land_city_func(g0_bs, sf_soil), g0)
     g0 = np.where(land_mask == 2, water_func(ra_24, trans_24, l_net, rn_slope, rn_offset, rn_24_soil), g0)
-    
+    g0 = np.where(land_mask == 3, land_city_func(g0_bs, sf_soil), g0)
+
     return g0

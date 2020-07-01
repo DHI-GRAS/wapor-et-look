@@ -375,6 +375,17 @@ def main(output_folder, Startdate, Enddate, latlim, lonlim, username, password, 
                 if os.path.exists(os.path.join(folder_RAW_file_tair_24, filename_tair_24)):        
                     tair_24 = lapse_rate_temp(os.path.join(folder_RAW_file_tair_24, filename_tair_24), DEM_file)
                     PF.Save_as_tiff(Tair_24_file, tair_24, geo_ex, proj_ex)
+                # Also save the maximum and minimum daily temperatures
+                Tair_24_file = os.path.join(folder_input_ETLook_Date, "tair_max_24_%d%02d%02d.tif" %(Date.year, Date.month, Date.day))
+                filename_tair_max_24 = "t2m_%s_K_daily_max_%d.%02d.%02d.tif"  %(str_METEO, Date.year, Date.month, Date.day)              
+                if os.path.exists(os.path.join(folder_RAW_file_tair_24, filename_tair_max_24)):        
+                    tair_24 = lapse_rate_temp(os.path.join(folder_RAW_file_tair_24, filename_tair_max_24), DEM_file)
+                    PF.Save_as_tiff(Tair_24_file, tair_24, geo_ex, proj_ex)
+                Tair_24_file = os.path.join(folder_input_ETLook_Date, "tair_min_24_%d%02d%02d.tif" %(Date.year, Date.month, Date.day))
+                filename_tair_min_24 = "t2m_%s_K_daily_min_%d.%02d.%02d.tif"  %(str_METEO, Date.year, Date.month, Date.day)              
+                if os.path.exists(os.path.join(folder_RAW_file_tair_24, filename_tair_min_24)):        
+                    tair_24 = lapse_rate_temp(os.path.join(folder_RAW_file_tair_24, filename_tair_min_24), DEM_file)
+                    PF.Save_as_tiff(Tair_24_file, tair_24, geo_ex, proj_ex)
                     
                 else:
                     print("daily Tair is not available")     
@@ -681,7 +692,3 @@ def Combine_LST(folders_input_RAW, Startdate, Enddate):
             PF.Save_as_tiff(Time_file, Time, geo_ex, proj_ex) 
             
     return()
-        
-        
-        
-        
