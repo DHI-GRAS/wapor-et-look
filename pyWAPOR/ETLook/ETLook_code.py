@@ -231,24 +231,20 @@ def main(input_folder, output_folder, Date):
     qv_i[np.isnan(lst)] = np.nan
 
     dest_tair24 = gdal.Open(Tair_24_filename)
-    t_air_k_24 = dest_tair24.GetRasterBand(1).ReadAsArray()
-    t_air_24 = ETLook.meteo.air_temperature_celcius(t_air_k_24)
+    t_air_24 = dest_tair24.GetRasterBand(1).ReadAsArray()
     #t_air_24 = ETLook.meteo.disaggregate_air_temperature_daily(t_air_24_coarse, z, z_coarse, lapse)
     t_air_24[np.isnan(lst)] = np.nan
 
     dest_tair24 = gdal.Open(Tair_max_24_filename)
-    t_air_max_k_24 = dest_tair24.GetRasterBand(1).ReadAsArray()
-    t_air_max_24 = ETLook.meteo.air_temperature_celcius(t_air_max_k_24)
+    t_air_max_24 = dest_tair24.GetRasterBand(1).ReadAsArray()
     t_air_max_24[np.isnan(lst)] = np.nan
 
     dest_tair24 = gdal.Open(Tair_min_24_filename)
-    t_air_min_k_24 = dest_tair24.GetRasterBand(1).ReadAsArray()
-    t_air_min_24 = ETLook.meteo.air_temperature_celcius(t_air_min_k_24)
+    t_air_min_24 = dest_tair24.GetRasterBand(1).ReadAsArray()
     t_air_min_24[np.isnan(lst)] = np.nan
 
     dest_tairinst = gdal.Open(Tair_inst_filename)
-    t_air_k_i = dest_tairinst.GetRasterBand(1).ReadAsArray()
-    t_air_i = ETLook.meteo.air_temperature_celcius(t_air_k_i)
+    t_air_i = dest_tairinst.GetRasterBand(1).ReadAsArray()
     t_air_i[np.isnan(lst)] = np.nan
 
     dest_tairamp = gdal.Open(Tair_amp_filename)
