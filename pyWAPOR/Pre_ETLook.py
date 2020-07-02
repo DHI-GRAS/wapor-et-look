@@ -626,7 +626,7 @@ def lapse_rate_temp(tair_file, dem_file):
     destT_down = PF.reproject_dataset_example(tair_file, dem_file, 2)
     destDEM_up = PF.reproject_dataset_example(dem_file, tair_file, 4)
     destDEM_down = gdal.Open(dem_file)
-    destDEM_up_down = PF.reproject_dataset_example(destDEM_up, dem_file, 4)
+    destDEM_up_down = PF.reproject_dataset_example(destDEM_up, dem_file, 2)
     
     # Open Arrays
     T = destT_down.GetRasterBand(1).ReadAsArray()
