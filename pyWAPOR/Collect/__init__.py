@@ -25,8 +25,8 @@ help(Collect)
 dir(Collect)
 """
 
-from pyWAPOR.Collect import CHIRPS, MOD11, MYD11, MCD43, MOD13, MYD13, MSGCPP, MERRA, Globcover, GEOS, SRTM, WAPOR
+from pyWAPOR.Collect import CHIRPS, MOD11, MYD11, MCD43, MOD13, MYD13, MSGCPP, MERRA, Globcover, GEOS, SRTM, WAPOR, PROBAV
 
-__all__ = ['CHIRPS', 'MOD11', 'MYD11', 'MCD43', 'MOD13', 'MYD13', 'MSGCPP' 'MERRA', 'SRTM', 'Globcover', 'GEOS', 'WAPOR']
+__all__ = ['CHIRPS', 'MOD11', 'MYD11', 'MCD43', 'MOD13', 'MYD13', 'MSGCPP' 'MERRA', 'SRTM', 'Globcover', 'GEOS', 'WAPOR', 'PROBAV']
 
 __version__ = '0.1'
