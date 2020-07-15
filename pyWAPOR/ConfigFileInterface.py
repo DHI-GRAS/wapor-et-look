@@ -24,29 +24,43 @@ def prepare_and_run_ETLook(config_file):
         longitude_extent = config["longitude_extent"]
         username_earthdata = config["username_earthdata"]
         password_earthdata = config["password_earthdata"]
+        username_vito = config["username_vito"]
+        password_vito = config["password_vito"]
         landcover = config["landcover"]
-        prepare_data = config["prepare_data"]
-        run_ETLook = config["run_ETLook"]
+        prepare_level1_data = config["prepare_level1_data"]
+        prepare_level2_data = config["prepare_level2_data"]
+        run_level1_ETLook = config["run_level1_ETLook"]
     except KeyError as e:
         print("Missing configuration parameter %s" % str(e))
         return
 
     # Prepare input data
-    if prepare_data:
-        Pre_ETLook.main(data_folder,
-                        start_date,
-                        end_date,
-                        latitude_extent,
-                        longitude_extent,
-                        username_earthdata,
-                        password_earthdata,
-                        landcover)
+    if prepare_level1_data:
+        Pre_ETLook.prepare_level1(data_folder,
+                                  start_date,
+                                  end_date,
+                                  latitude_extent,
+                                  longitude_extent,
+                                  username_earthdata,
+                                  password_earthdata,
+                                  landcover)
+    if prepare_level2_data:
+        Pre_ETLook.prepare_level2(data_folder,
+                                  start_date,
+                                  end_date,
+                                  latitude_extent,
+                                  longitude_extent,
+                                  username_vito,
+                                  password_vito,
+                                  username_earthdata,
+                                  password_earthdata,
+                                  landcover)
 
     # Run the model
-    if run_ETLook:
+    if run_level1_ETLook:
         print(" ")
         for date in pd.date_range(start_date, end_date, freq="D"):
             print("Running ETLook for %s " % date.strftime("%Y-%m-%d"))
-            ETLook.ETLook_code.main(os.path.join(data_folder, "ETLook_input"),
-                                    os.path.join(data_folder, "ETLook_output"),
+            ETLook.ETLook_code.main(os.path.join(data_folder, "ETLook_input", "level_1"),
+                                    os.path.join(data_folder, "ETLook_output", "level_1"),
                                     date)
