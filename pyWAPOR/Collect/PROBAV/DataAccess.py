@@ -20,6 +20,8 @@ from pathlib import Path
 from geojson import Polygon
 from datetime import datetime, timedelta
 
+import nest_asyncio
+nest_asyncio.apply()
 
 def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username, password):
 
