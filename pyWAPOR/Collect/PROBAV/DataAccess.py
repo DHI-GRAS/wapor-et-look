@@ -44,7 +44,7 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
 
         max_retries = 4
         no_of_attempts = 0
-        download_sucess = False
+        download_success = False
 
         # TODO: maybe put all this in a function called _download_hdf5 (line 49-70)
         # sometimes vito fails, sometimes it works to retry.
