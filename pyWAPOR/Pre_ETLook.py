@@ -88,7 +88,7 @@ def prepare_level1(output_folder, startdate, enddate, latlim, lonlim, username, 
                     print("NDVI is not available for date: %d%02d%02d" %(date.year, date.month, date.day))
 
             # Get example files
-            if not template_file:
+            if not template_file and os.path.exists(NDVI_file):
                 template_file = NDVI_file
                 dest_ex = gdal.Open(NDVI_file)
                 geo_ex = dest_ex.GetGeoTransform()
@@ -141,49 +141,48 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
     # Download NDVI data
     pyWAPOR.Collect.PROBAV.NDVI(folder_input_RAW, startdate, enddate, latlim, lonlim,
                                 username_vito, password_vito)
-    '''
+
     # Create the inputs of MODIS NDVI and albedo for all the Dates
     template_file = None
     for date in dates:
 
         try:
             # Define output folder
-            folder_input_ETLook_Date = os.path.join(folder_input_ETLook, "%d%02d%02d" %(date.year, date.month, date.day))
+            folder_input_ETLook_Date = os.path.join(folder_input_ETLook,
+                                                    "%s" % date.strftime("%Y%m%d"))
             if not os.path.exists(folder_input_ETLook_Date):
                 os.makedirs(folder_input_ETLook_Date)
 
-            NDVI_file = os.path.join(folder_input_ETLook_Date, "NDVI_%d%02d%02d.tif" %(date.year, date.month, date.day))
+            # TODO: For now the NDVI files are just copied. But we might need to do compositing
+            # and smoothing.
+            NDVI_file = os.path.join(folder_input_ETLook_Date,
+                                     "NDVI_%s.tif" % date.strftime("%Y%m%d"))
             if not os.path.exists(NDVI_file):
-                folder_RAW_file_NDVI = os.path.join(folders_input_RAW, "MODIS", "{v}13")
-                filename_NDVI = "NDVI_{v}13Q1_-_16-daily_%d.%02d.%02d.tif" %(Date_nearest.year, Date_nearest.month, Date_nearest.day)
-
-                if os.path.exists(os.path.join(folder_RAW_file_NDVI, filename_NDVI).format(v="MOD")):
-                    shutil.copy(os.path.join(folder_RAW_file_NDVI, filename_NDVI).format(v="MOD"),
-                                folder_input_ETLook_Date)
-                    os.rename(os.path.join(folder_input_ETLook_Date, filename_NDVI).format(v="MOD"), NDVI_file)
-
-                elif os.path.exists(os.path.join(folder_RAW_file_NDVI, filename_NDVI).format(v="MYD")):
-                    shutil.copy(os.path.join(folder_RAW_file_NDVI, filename_NDVI).format(v="MYD"),
-                                folder_input_ETLook_Date)
-                    os.rename(os.path.join(folder_input_ETLook_Date, filename_NDVI).format(v="MYD"), NDVI_file)
-
+                raw_NDVI_file = os.path.join(folder_input_RAW, "ProbaV",
+                                             "NDVI_%s.tif" % date.strftime("%Y%m%d"))
+                if os.path.exists(raw_NDVI_file):
+                    shutil.copy(raw_NDVI_file, folder_input_ETLook_Date)
                 else:
-                    print("NDVI is not available for date: %d%02d%02d" %(date.year, date.month, date.day))
+                    print("NDVI is not available for date: %d%02d%02d"
+                          % (date.year, date.month, date.day))
 
             # Get example files
-            if not template_file:
+            if not template_file and os.path.exists(NDVI_file):
                 template_file = NDVI_file
                 dest_ex = gdal.Open(NDVI_file)
                 geo_ex = dest_ex.GetGeoTransform()
                 proj_ex = dest_ex.GetProjection()
                 dest_ex = None
+
+            # TODO: Deal with Proba-V albedo files in the same was as with NDVI files
+
         except:
-            print("No ETLook input dataset for %s" %date)
+            print("No ETLook input dataset for %s" % date)
 
     # Download and create all other Level 2 inputs
     prepare_level1_level2(output_folder, startdate, enddate, latlim, lonlim, username_earthdata,
                           password_earthdata, template_file, "level_2", LandCover=landcover)
-    '''
+
 
 # Preparation of input data which is common for Level 1 and Level 2
 def prepare_level1_level2(output_folder, Startdate, Enddate, latlim, lonlim, username, password,
@@ -203,10 +202,10 @@ def prepare_level1_level2(output_folder, Startdate, Enddate, latlim, lonlim, use
     Dates = pd.date_range(Startdate, Enddate, freq = "D")
 
     ######################### Download LST MODIS data #############################
-    
+
     # Download LST data
     pyWAPOR.Collect.MOD11.LST(folders_input_RAW, Startdate, Enddate, latlim, lonlim, username, password)
-    pyWAPOR.Collect.MYD11.LST(folders_input_RAW, Startdate, Enddate, latlim, lonlim, username, password)   
+    pyWAPOR.Collect.MYD11.LST(folders_input_RAW, Startdate, Enddate, latlim, lonlim, username, password)
     Combine_LST(folders_input_RAW, Startdate, Enddate)
 
     ######################## Download Rainfall Data ###############################

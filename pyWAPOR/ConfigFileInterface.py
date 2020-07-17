@@ -30,6 +30,7 @@ def prepare_and_run_ETLook(config_file):
         prepare_level1_data = config["prepare_level1_data"]
         prepare_level2_data = config["prepare_level2_data"]
         run_level1_ETLook = config["run_level1_ETLook"]
+        run_level2_ETLook = config["run_level2_ETLook"]
     except KeyError as e:
         print("Missing configuration parameter %s" % str(e))
         return
@@ -60,7 +61,14 @@ def prepare_and_run_ETLook(config_file):
     if run_level1_ETLook:
         print(" ")
         for date in pd.date_range(start_date, end_date, freq="D"):
-            print("Running ETLook for %s " % date.strftime("%Y-%m-%d"))
+            print("Running ETLook Level 1 for %s " % date.strftime("%Y-%m-%d"))
             ETLook.ETLook_code.main(os.path.join(data_folder, "ETLook_input", "level_1"),
                                     os.path.join(data_folder, "ETLook_output", "level_1"),
+                                    date)
+    if run_level2_ETLook:
+        print(" ")
+        for date in pd.date_range(start_date, end_date, freq="D"):
+            print("Running ETLook Level 2 for %s " % date.strftime("%Y-%m-%d"))
+            ETLook.ETLook_code.main(os.path.join(data_folder, "ETLook_input", "level_2"),
+                                    os.path.join(data_folder, "ETLook_output", "level_2"),
                                     date)
