@@ -4,6 +4,7 @@ Author: Laust Færch
 Module: Collect/PROBAV
 """
 
+import glob
 import re
 import os
 import warnings
@@ -23,7 +24,9 @@ from datetime import datetime, timedelta
 import nest_asyncio
 nest_asyncio.apply()
 
-def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username, password):
+
+def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username,
+                  password):
 
     download_dir = Path(os.path.join(download_dir, "ProbaV"))
     if not os.path.isdir(download_dir):
@@ -40,8 +43,13 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
     for i in tqdm(range(delta.days + 1)):
         date = (start_date - time_buffer) + timedelta(days=i)
 
+        if (glob.glob(os.path.join(download_dir, "*%s.tif" % date.strftime("%Y%m%d"))) or
+            glob.glob(os.path.join(download_dir, "*%s*.HDF5" % date.strftime("%Y%m%d")))):
+            continue
+
         # retrieve vito URL
-        url = vito.build_url(product='Proba-V-NDVI', year=date.year, month=date.month, day=date.day,
+        url = vito.build_url(product='Proba-V-NDVI', year=date.year, month=date.month,
+                             day=date.day,
                              extent={'xmin': longitude_extent[0], 'xmax': longitude_extent[1],
                                      'ymin': latitude_extent[0], 'ymax': latitude_extent[1]})
 
@@ -57,7 +65,8 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
                 # TODO: we need to figure out why vito sometimes fails
                 # download all matching files
                 local_files = vito.download_data(url, username=username, password=password,
-                                                 download_dir=download_dir, include='*.HDF5', download_jobs=4)
+                                                 download_dir=download_dir, include='*.HDF5',
+                                                 download_jobs=4)
                 downloaded_files = list(local_files)
 
                 download_success = True
@@ -86,11 +95,12 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
             if date_str == current_date_str:
                 input_files.append(str(file))
 
-        output_file = str(download_dir / f'NDVI_{date.strftime("%Y-%m-%d")}.tif')
+        output_file = str(download_dir / f'NDVI_{date.strftime("%Y%m%d")}.tif')
 
         # merge files and clip to extent, save as tif
         if input_files:
-            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=True)
+            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent,
+                                 delete_input=True)
 
     return()
 
@@ -100,12 +110,12 @@ def _dataarray_to_tif(da, filename):
 
     # TODO: we assume crs is EPSG:4326 - change to dynamic crs later
     meta = {'driver': 'GTiff',
-             'height': da.shape[0],
-             'width': da.shape[1],
-             'dtype': str(da.dtype),
-             'count': 1,
-             'transform': rasterio.Affine.from_gdal(*da.attrs['affine']),
-             'crs': rasterio.crs.CRS.from_string('EPSG:4326')}
+            'height': da.shape[0],
+            'width': da.shape[1],
+            'dtype': str(da.dtype),
+            'count': 1,
+            'transform': rasterio.Affine.from_gdal(*da.attrs['affine']),
+            'crs': rasterio.crs.CRS.from_string('EPSG:4326')}
 
     with rasterio.open(filename, 'w', **meta) as dst:
         dst.write(da.values, 1)
@@ -128,7 +138,8 @@ def _hdf5_to_dataarray(filename, group):
 
 
 # merge tif files and save as one
-def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=True):
+def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent,
+                         delete_input=True):
     extent_poly = Polygon([[(longitude_extent[0], latitude_extent[0]),
                             (longitude_extent[1], latitude_extent[0]),
                             (longitude_extent[1], latitude_extent[1]),
