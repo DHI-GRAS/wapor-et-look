@@ -25,6 +25,7 @@ nest_asyncio.apply()
 
 def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username, password):
 
+    download_dir = Path(os.path.join(download_dir, "ProbaV"))
     if not os.path.isdir(download_dir):
         os.mkdir(download_dir)
 
