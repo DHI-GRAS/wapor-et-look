@@ -1,8 +1,8 @@
 data_folder = "/data/wapor_test"
 start_date = "2018-04-20"
 end_date = "2018-04-23"
-latitude_extent = [33.5, 34.5]
-longitude_extent = [31.5, 36.0]
+latitude_extent = [33.0, 34.8]
+longitude_extent = [35.0, 36.7]
 username_earthdata = ""
 password_earthdata = ""
 username_vito = ""
