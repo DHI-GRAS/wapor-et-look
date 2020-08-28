@@ -18,6 +18,7 @@ import vito_download as vito
 from tqdm import tqdm
 from pathlib import Path
 from geojson import Polygon
+from rasterio import features
 from datetime import datetime, timedelta
 
 
@@ -47,8 +48,8 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
                                      'ymin': latitude_extent[0], 'ymax': latitude_extent[1]})
 
         no_of_attempts = 0
-        download_sucess = False
-
+        download_success = False
+        downloaded_files = []
 
         # sometimes vito.download fails, often it works to retry.
         while no_of_attempts <= max_retries:
@@ -128,10 +129,10 @@ def _hdf5_to_dataarray(filename, group):
 
 # merge tif files and save as one
 def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=True):
-    extent_poly = Polygon([[(longitude_extent[0], latitude_extent[0]),
-                            (longitude_extent[1], latitude_extent[0]),
-                            (longitude_extent[1], latitude_extent[1]),
-                            (longitude_extent[0], latitude_extent[1])]])
+    extent_poly = Polygon([(longitude_extent[0], latitude_extent[0]),
+                           (longitude_extent[1], latitude_extent[0]),
+                           (longitude_extent[1], latitude_extent[1]),
+                           (longitude_extent[0], latitude_extent[1])])
 
     bbox = rasterio.features.bounds(extent_poly)
     src_files_to_mosaic = []
