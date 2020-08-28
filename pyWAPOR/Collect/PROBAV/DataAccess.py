@@ -4,7 +4,6 @@ Author: Laust Færch
 Module: Collect/PROBAV
 """
 
-import glob
 import re
 import os
 import warnings
@@ -21,14 +20,13 @@ from pathlib import Path
 from geojson import Polygon
 from datetime import datetime, timedelta
 
-import nest_asyncio
-nest_asyncio.apply()
 
+def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username, password):
 
-def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username,
-                  password):
+    # setup
+    max_retries = 4
+    delete_hdf5 = True
 
-    download_dir = Path(os.path.join(download_dir, "ProbaV"))
     if not os.path.isdir(download_dir):
         os.mkdir(download_dir)
 
@@ -36,42 +34,32 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
     # download for the date interval +/- the time_buffer
-    time_buffer = timedelta(days=14)
+    time_buffer = timedelta(days=15)
     delta = (end_date + time_buffer) - (start_date - time_buffer)
 
     # Loop over all dates
     for i in tqdm(range(delta.days + 1)):
         date = (start_date - time_buffer) + timedelta(days=i)
 
-        if (glob.glob(os.path.join(download_dir, "*%s.tif" % date.strftime("%Y%m%d"))) or
-            glob.glob(os.path.join(download_dir, "*%s*.HDF5" % date.strftime("%Y%m%d")))):
-            continue
-
         # retrieve vito URL
-        url = vito.build_url(product='Proba-V-NDVI', year=date.year, month=date.month,
-                             day=date.day,
+        url = vito.build_url(product='Proba-V-NDVI', year=date.year, month=date.month, day=date.day,
                              extent={'xmin': longitude_extent[0], 'xmax': longitude_extent[1],
                                      'ymin': latitude_extent[0], 'ymax': latitude_extent[1]})
 
-        max_retries = 4
         no_of_attempts = 0
-        download_success = False
+        download_sucess = False
 
-        # TODO: maybe put all this in a function called _download_hdf5 (line 49-70)
-        # sometimes vito fails, sometimes it works to retry.
+
+        # sometimes vito.download fails, often it works to retry.
         while no_of_attempts <= max_retries:
             try:
-                # TODO: make check to see if *.HDF5 files exists already
-                # TODO: we need to figure out why vito sometimes fails
                 # download all matching files
                 local_files = vito.download_data(url, username=username, password=password,
-                                                 download_dir=download_dir, include='*.HDF5',
-                                                 download_jobs=4)
+                                                 download_dir=download_dir, include='*.HDF5', download_jobs=4)
                 downloaded_files = list(local_files)
 
                 download_success = True
-
-            except:
+            except RuntimeError:
                 no_of_attempts += 1
                 continue
             break
@@ -82,7 +70,6 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
 
         # convert downloaded HDF5 files to tif files
         for file in downloaded_files:
-            # TODO: make it possible to delete hdf5 files
             da = _hdf5_to_dataarray(file, 'LEVEL3/NDVI')
             _dataarray_to_tif(da, str(Path(file).with_suffix('.tif')))
 
@@ -95,12 +82,15 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
             if date_str == current_date_str:
                 input_files.append(str(file))
 
-        output_file = str(download_dir / f'NDVI_{date.strftime("%Y%m%d")}.tif')
+        output_file = str(download_dir / f'NDVI_{date.strftime("%Y-%m-%d")}.tif')
 
         # merge files and clip to extent, save as tif
         if input_files:
-            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent,
-                                 delete_input=True)
+            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=True)
+
+    if delete_hdf5:
+        for file in list(download_dir.glob('*.HDF5')):
+            os.remove(file)
 
     return()
 
@@ -108,14 +98,13 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
 # save xarray DataArrays as tif
 def _dataarray_to_tif(da, filename):
 
-    # TODO: we assume crs is EPSG:4326 - change to dynamic crs later
     meta = {'driver': 'GTiff',
             'height': da.shape[0],
             'width': da.shape[1],
             'dtype': str(da.dtype),
             'count': 1,
             'transform': rasterio.Affine.from_gdal(*da.attrs['affine']),
-            'crs': rasterio.crs.CRS.from_string('EPSG:4326')}
+            'crs': da.crs}
 
     with rasterio.open(filename, 'w', **meta) as dst:
         dst.write(da.values, 1)
@@ -125,7 +114,7 @@ def _dataarray_to_tif(da, filename):
 # if this function doesn't work: try to update your xarray and netcdf libraries.
 def _hdf5_to_dataarray(filename, group):
     # read the group data
-    with xr.open_dataset(filename, group=group) as src:
+    with xr.open_dataset(filename, group=group, engine='netcdf4') as src:
         da = src.NDVI
     # fetch metadata
     with xr.open_dataset(filename) as src:
@@ -138,8 +127,7 @@ def _hdf5_to_dataarray(filename, group):
 
 
 # merge tif files and save as one
-def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent,
-                         delete_input=True):
+def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=True):
     extent_poly = Polygon([[(longitude_extent[0], latitude_extent[0]),
                             (longitude_extent[1], latitude_extent[0]),
                             (longitude_extent[1], latitude_extent[1]),
