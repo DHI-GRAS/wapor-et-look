@@ -22,11 +22,12 @@ from rasterio import features
 from datetime import datetime, timedelta
 
 
-def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username, password):
+def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username, password, product):
 
     # setup
-    max_retries = 4
-    delete_hdf5 = True
+    max_retries = 5
+    delete_hdf5 = False
+    delete_tif = True
 
     if not os.path.isdir(download_dir):
         os.mkdir(download_dir)
@@ -43,7 +44,7 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
         date = (start_date - time_buffer) + timedelta(days=i)
 
         # retrieve vito URL
-        url = vito.build_url(product='Proba-V-NDVI', year=date.year, month=date.month, day=date.day,
+        url = vito.build_url(product=product, year=date.year, month=date.month, day=date.day,
                              extent={'xmin': longitude_extent[0], 'xmax': longitude_extent[1],
                                      'ymin': latitude_extent[0], 'ymax': latitude_extent[1]})
 
@@ -52,6 +53,7 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
         downloaded_files = []
 
         # sometimes vito.download fails, often it works to retry.
+        # this is not a bug in our code - it appears to be vito fucking up
         while no_of_attempts <= max_retries:
             try:
                 # download all matching files
@@ -66,28 +68,40 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
             break
 
         if not download_success:
-            warnings.warn(f'vito download failed for date: {date.strftime("%Y-%m-%d")}')
+            date_str  = date.strftime("%Y-%m-%d")
+            warnings.warn(f'vito download failed for date: {date_str}')
             break
 
         # convert downloaded HDF5 files to tif files
-        for file in downloaded_files:
-            da = _hdf5_to_dataarray(file, 'LEVEL3/NDVI')
-            _dataarray_to_tif(da, str(Path(file).with_suffix('.tif')))
+        for hdf_file in downloaded_files:
+            if product == 'Proba-V-NDVI':
+                da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/NDVI', product)
+                _dataarray_to_tif(da, str(Path(hdf_file).with_suffix('.tif')))
+
+            elif product == 'Proba-V':
+                band_list = ['BLUE', 'NIR', 'RED', 'SWIR']
+                for band in band_list:
+                    da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/RADIOMETRY/{band}', product)
+                    _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + f'_{band}.tif')
 
         # loop over all tif files in download folder
         input_files = []
-        for file in download_dir.glob('*.tif'):
-            date_str = max(re.findall('[0-9]+', str(file)), key=len)
+        for tif_file in download_dir.glob('*.tif'):
+            date_str = max(re.findall('[0-9]+', str(tif_file)), key=len)
             current_date_str = date.strftime('%Y%m%d')
             # collect all files that matches current date
             if date_str == current_date_str:
-                input_files.append(str(file))
+                input_files.append(str(tif_file))
 
-        output_file = str(download_dir / f'NDVI_{date.strftime("%Y-%m-%d")}.tif')
+        if product == 'Proba-V-NDVI':
+            output_file = str(download_dir / f'NDVI_{date.strftime("%Y-%m-%d")}.tif')
+        elif product == 'Proba-V':
+            output_file = str(download_dir / f'ALBEDO_{date.strftime("%Y-%m-%d")}.tif')
+            input_files = _process_and_save_albedo(input_files, download_dir, delete_input=delete_tif)
 
         # merge files and clip to extent, save as tif
         if input_files:
-            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=True)
+            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=delete_tif)
 
     if delete_hdf5:
         for file in list(download_dir.glob('*.HDF5')):
@@ -113,10 +127,15 @@ def _dataarray_to_tif(da, filename):
 
 # open hdf5 file as xarray DataArray
 # if this function doesn't work: try to update your xarray and netcdf libraries.
-def _hdf5_to_dataarray(filename, group):
+def _hdf5_to_dataarray(filename, group, product):
     # read the group data
     with xr.open_dataset(filename, group=group, engine='netcdf4') as src:
-        da = src.NDVI
+
+        if product == 'Proba-V-NDVI':
+            da = src.NDVI
+        elif product == 'Proba-V':
+            da = src.TOC
+
     # fetch metadata
     with xr.open_dataset(filename) as src:
         meta = src.copy()
@@ -172,3 +191,39 @@ def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_ex
 
         for file in input_files:
             os.remove(file)
+
+
+# calculate albedo from band files
+def _process_and_save_albedo(input_files, download_dir, delete_input=True):
+    tiles = set([file.split('_')[4] for file in input_files])
+    updated_input_files = []
+
+    for tile in list(tiles):
+        matching_files = [elem for elem in input_files if tile in elem]
+
+        all_data = []
+        band_names = []
+        for file in matching_files:
+            with rasterio.open(str(file)) as src:
+                all_data.append(src.read())
+                meta = src.profile
+            band_names.append(str(Path(file).stem).split('_')[-1])
+
+        all_bands = np.asarray(all_data).squeeze()
+
+        surface_albedo = (0.429 * all_bands[band_names.index('BLUE'), ...]
+                          + 0.333 * all_bands[band_names.index('RED'), ...]
+                          + 0.133 * all_bands[band_names.index('NIR'), ...]
+                          + 0.105 * all_bands[band_names.index('SWIR'), ...])
+
+        albedo_filename = str(Path(file).parent / Path(str('_').join(Path(file).stem.split('_')[0:-1]))) + '_ALBEDO.tif'
+        with rasterio.open(albedo_filename, 'w', **meta) as dst:
+            dst.write(surface_albedo, 1)
+
+        updated_input_files.append(albedo_filename)
+
+    if delete_input:
+        for file in input_files:
+            os.remove(file)
+
+    return updated_input_files

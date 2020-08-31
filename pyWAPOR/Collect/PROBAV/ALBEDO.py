@@ -8,8 +8,8 @@ def main(download_dir, start_date, end_date, latitude_extent, longitude_extent, 
 
     """
 
-    download_data(download_dir/Path('NDVI'), start_date, end_date, latitude_extent,
-                  longitude_extent, username, password, product='Proba-V-NDVI')
+    download_data(download_dir/Path('ALBEDO'), start_date, end_date, latitude_extent,
+                  longitude_extent, username, password, product='Proba-V')
 
 if __name__ == '__main__':
     main(sys.argv)
