@@ -19,6 +19,7 @@ from tqdm import tqdm
 from pathlib import Path
 from geojson import Polygon
 from rasterio import features
+from urllib.error import HTTPError
 from datetime import datetime, timedelta
 
 
@@ -36,7 +37,7 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
     # download for the date interval +/- the time_buffer
-    time_buffer = timedelta(days=15)
+    time_buffer = timedelta(days=7)
     delta = (end_date + time_buffer) - (start_date - time_buffer)
 
     # Loop over all dates
@@ -53,7 +54,6 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
         downloaded_files = []
 
         # sometimes vito.download fails, often it works to retry.
-        # this is not a bug in our code - it appears to be vito fucking up
         while no_of_attempts <= max_retries:
             try:
                 # download all matching files
@@ -61,14 +61,20 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
                                                  download_dir=download_dir, include='*.HDF5', download_jobs=4)
                 downloaded_files = list(local_files)
 
+                # Test if file is corrupted
+                for file in downloaded_files:
+                    with xr.open_dataset(file, engine='netcdf4') as src:
+                        crs = src.crs
+
                 download_success = True
-            except RuntimeError:
+
+            except (RuntimeError, HTTPError):
                 no_of_attempts += 1
                 continue
             break
 
         if not download_success:
-            date_str  = date.strftime("%Y-%m-%d")
+            date_str = date.strftime("%Y-%m-%d")
             warnings.warn(f'vito download failed for date: {date_str}')
             break
 
@@ -80,24 +86,26 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
 
             elif product == 'Proba-V':
                 band_list = ['BLUE', 'NIR', 'RED', 'SWIR']
+                # read all bands and save as individual tifs
                 for band in band_list:
                     da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/RADIOMETRY/{band}', product)
                     _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + f'_{band}.tif')
+                da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/QUALITY', 'quality')
+                _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + '_SM.tif')
 
         # loop over all tif files in download folder
         input_files = []
         for tif_file in download_dir.glob('*.tif'):
             date_str = max(re.findall('[0-9]+', str(tif_file)), key=len)
-            current_date_str = date.strftime('%Y%m%d')
             # collect all files that matches current date
-            if date_str == current_date_str:
+            if date_str == date.strftime('%Y%m%d'):
                 input_files.append(str(tif_file))
 
         if product == 'Proba-V-NDVI':
             output_file = str(download_dir / f'NDVI_{date.strftime("%Y-%m-%d")}.tif')
         elif product == 'Proba-V':
             output_file = str(download_dir / f'ALBEDO_{date.strftime("%Y-%m-%d")}.tif')
-            input_files = _process_and_save_albedo(input_files, download_dir, delete_input=delete_tif)
+            input_files = _process_and_save_albedo(input_files, delete_tif)
 
         # merge files and clip to extent, save as tif
         if input_files:
@@ -135,6 +143,8 @@ def _hdf5_to_dataarray(filename, group, product):
             da = src.NDVI
         elif product == 'Proba-V':
             da = src.TOC
+        elif product == 'quality':
+            da = src.SM
 
     # fetch metadata
     with xr.open_dataset(filename) as src:
@@ -194,7 +204,8 @@ def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_ex
 
 
 # calculate albedo from band files
-def _process_and_save_albedo(input_files, download_dir, delete_input=True):
+# Albedo should be calculated for each downloaded tile and saved as tif
+def _process_and_save_albedo(input_files, delete_input=True):
     tiles = set([file.split('_')[4] for file in input_files])
     updated_input_files = []
 
@@ -216,7 +227,16 @@ def _process_and_save_albedo(input_files, download_dir, delete_input=True):
                           + 0.133 * all_bands[band_names.index('NIR'), ...]
                           + 0.105 * all_bands[band_names.index('SWIR'), ...])
 
-        albedo_filename = str(Path(file).parent / Path(str('_').join(Path(file).stem.split('_')[0:-1]))) + '_ALBEDO.tif'
+        # Mask clouds
+        quality_band = all_bands[band_names.index('SM'), ...]
+        flag_mask = [1, 2, 3, 4]  # {1: shadow, 2: cloud, 3: undefined, 4: ice+snow}
+        bit_mask_array = np.bitwise_or.reduce(flag_mask)*np.ones_like(quality_band)
+        mask = np.bitwise_and(quality_band.astype(np.int), bit_mask_array.astype(np.int)) > 0
+        surface_albedo[mask] = None
+
+        albedo_filename = str(Path(matching_files[0]).parent /
+                              Path(str('_').join(Path(matching_files[0]).stem.split('_')[0:-1]))) + '_ALBEDO.tif'
+
         with rasterio.open(albedo_filename, 'w', **meta) as dst:
             dst.write(surface_albedo, 1)
 
