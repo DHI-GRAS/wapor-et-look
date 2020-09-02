@@ -19,7 +19,7 @@ from tqdm import tqdm
 from pathlib import Path
 from geojson import Polygon
 from rasterio import features
-from urllib.error import HTTPError
+from requests.exceptions import HTTPError
 from datetime import datetime, timedelta
 
 
@@ -61,10 +61,14 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
                                                  download_dir=download_dir, include='*.HDF5', download_jobs=4)
                 downloaded_files = list(local_files)
 
-                # Test if file is corrupted
                 for file in downloaded_files:
-                    with xr.open_dataset(file, engine='netcdf4') as src:
-                        crs = src.crs
+                    # If file is corrupted, delete it and retry
+                    try:
+                        with xr.open_dataset(file, engine='netcdf4') as src:
+                            crs = src.crs # all files should have crs
+                    except OSError:
+                        os.remove(file)
+                        raise RuntimeError
 
                 download_success = True
 
@@ -74,8 +78,7 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
             break
 
         if not download_success:
-            date_str = date.strftime("%Y-%m-%d")
-            warnings.warn(f'vito download failed for date: {date_str}')
+            warnings.warn(f'vito download failed for date: {date.strftime("%Y-%m-%d")}')
             break
 
         # convert downloaded HDF5 files to tif files
