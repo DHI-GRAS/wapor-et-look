@@ -21,6 +21,10 @@ from geojson import Polygon
 from requests.exceptions import HTTPError
 from datetime import datetime, timedelta
 
+# Required for Python 3.6 and 3.7
+import nest_asyncio
+nest_asyncio.apply()
+
 
 def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username,
                   password, product):
