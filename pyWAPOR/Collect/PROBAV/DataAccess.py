@@ -18,12 +18,12 @@ import vito_download as vito
 from tqdm import tqdm
 from pathlib import Path
 from geojson import Polygon
-from rasterio import features
 from requests.exceptions import HTTPError
 from datetime import datetime, timedelta
 
 
-def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username, password, product):
+def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username,
+                  password, product):
 
     # setup
     max_retries = 5
@@ -58,7 +58,8 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
             try:
                 # download all matching files
                 local_files = vito.download_data(url, username=username, password=password,
-                                                 download_dir=download_dir, include='*.HDF5', download_jobs=4)
+                                                 download_dir=download_dir, include='*.HDF5',
+                                                 download_jobs=4)
                 downloaded_files = list(local_files)
 
                 for file in downloaded_files:
@@ -83,17 +84,17 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
 
         # convert downloaded HDF5 files to tif files
         for hdf_file in downloaded_files:
-            if product == 'Proba-V-NDVI':
+            if product == 'Proba-V-S5-TOC-NDVI':
                 da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/NDVI', product)
                 _dataarray_to_tif(da, str(Path(hdf_file).with_suffix('.tif')))
 
-            elif product == 'Proba-V':
+            elif product == 'Proba-V-S5-TOC':
                 band_list = ['BLUE', 'NIR', 'RED', 'SWIR']
                 # read all bands and save as individual tifs
                 for band in band_list:
                     da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/RADIOMETRY/{band}', product)
                     _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + f'_{band}.tif')
-                da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/QUALITY', 'quality')
+                da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/QUALITY', 'quality')
                 _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + '_SM.tif')
 
         # loop over all tif files in download folder
@@ -104,15 +105,16 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
             if date_str == date.strftime('%Y%m%d'):
                 input_files.append(str(tif_file))
 
-        if product == 'Proba-V-NDVI':
+        if product == 'Proba-V-S5-TOC-NDVI':
             output_file = str(download_dir / f'NDVI_{date.strftime("%Y-%m-%d")}.tif')
-        elif product == 'Proba-V':
+        elif product == 'Proba-V-S5-TOC':
             output_file = str(download_dir / f'ALBEDO_{date.strftime("%Y-%m-%d")}.tif')
             input_files = _process_and_save_albedo(input_files, delete_tif)
 
         # merge files and clip to extent, save as tif
         if input_files:
-            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=delete_tif)
+            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent,
+                                 delete_input=delete_tif)
 
     if delete_hdf5:
         for file in list(download_dir.glob('*.HDF5')):
@@ -142,9 +144,9 @@ def _hdf5_to_dataarray(filename, group, product):
     # read the group data
     with xr.open_dataset(filename, group=group, engine='netcdf4') as src:
 
-        if product == 'Proba-V-NDVI':
+        if product == 'Proba-V-S5-TOC-NDVI':
             da = src.NDVI
-        elif product == 'Proba-V':
+        elif product == 'Proba-V-S5-TOC':
             da = src.TOC
         elif product == 'quality':
             da = src.SM
@@ -160,7 +162,8 @@ def _hdf5_to_dataarray(filename, group, product):
 
 
 # merge tif files and save as one
-def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent, delete_input=True):
+def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent,
+                         delete_input=True):
     extent_poly = Polygon([(longitude_extent[0], latitude_extent[0]),
                            (longitude_extent[1], latitude_extent[0]),
                            (longitude_extent[1], latitude_extent[1]),

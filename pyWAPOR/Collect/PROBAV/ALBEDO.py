@@ -9,7 +9,7 @@ def main(download_dir, start_date, end_date, latitude_extent, longitude_extent, 
     """
 
     download_data(download_dir/Path('ALBEDO'), start_date, end_date, latitude_extent,
-                  longitude_extent, username, password, product='Proba-V')
+                  longitude_extent, username, password, product='Proba-V-S5-TOC')
 
 if __name__ == '__main__':
     main(sys.argv)
