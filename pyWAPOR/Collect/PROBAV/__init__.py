@@ -9,10 +9,8 @@ https://www.vito-eodata.be/PDF/datapool/.
 You need to register as a user (which is free) to use this module
 
 """
+from .PROBAV_S5 import main as PROBAV_S5
 
-from .NDVI import main as NDVI
-from .ALBEDO import main as ALBEDO
-
-__all__ = ['NDVI', 'ALBEDO']
+__all__ = ["PROBAV_S5"]
 
 __version__ = '0.1'

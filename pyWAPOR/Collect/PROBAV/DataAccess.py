@@ -27,12 +27,13 @@ nest_asyncio.apply()
 
 
 def download_data(download_dir, start_date, end_date, latitude_extent, longitude_extent, username,
-                  password, product):
+                  password):
 
     # setup
     max_retries = 5
     delete_hdf5 = False
     delete_tif = True
+    dataset = 'Proba-V-S5-TOC'
 
     if not os.path.isdir(download_dir):
         os.mkdir(download_dir)
@@ -49,7 +50,7 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
         date = (start_date - time_buffer) + timedelta(days=i)
 
         # retrieve vito URL
-        url = vito.build_url(product=product, year=date.year, month=date.month, day=date.day,
+        url = vito.build_url(product=dataset, year=date.year, month=date.month, day=date.day,
                              extent={'xmin': longitude_extent[0], 'xmax': longitude_extent[1],
                                      'ymin': latitude_extent[0], 'ymax': latitude_extent[1]})
 
@@ -88,18 +89,16 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
 
         # convert downloaded HDF5 files to tif files
         for hdf_file in downloaded_files:
-            if product == 'Proba-V-S5-TOC-NDVI':
-                da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/NDVI', product)
-                _dataarray_to_tif(da, str(Path(hdf_file).with_suffix('.tif')))
-
-            elif product == 'Proba-V-S5-TOC':
-                band_list = ['BLUE', 'NIR', 'RED', 'SWIR']
-                # read all bands and save as individual tifs
-                for band in band_list:
-                    da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/RADIOMETRY/{band}', product)
-                    _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + f'_{band}.tif')
-                da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/QUALITY', 'quality')
-                _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + '_SM.tif')
+            da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/NDVI', 'NDVI')
+            _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + '_NDVI.tif')
+            band_list = ['BLUE', 'NIR', 'RED', 'SWIR']
+            # read all bands and save as individual tifs
+            for band in band_list:
+                da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/RADIOMETRY/{band}', 'TOC')
+                _dataarray_to_tif(da, str(Path(hdf_file).parent /
+                                          Path(hdf_file).stem) + f'_{band}.tif')
+            da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/QUALITY', 'SM')
+            _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + '_SM.tif')
 
         # loop over all tif files in download folder
         input_files = []
@@ -109,16 +108,19 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
             if date_str == date.strftime('%Y%m%d'):
                 input_files.append(str(tif_file))
 
-        if product == 'Proba-V-S5-TOC-NDVI':
-            output_file = str(download_dir / f'NDVI_{date.strftime("%Y-%m-%d")}.tif')
-        elif product == 'Proba-V-S5-TOC':
-            output_file = str(download_dir / f'ALBEDO_{date.strftime("%Y-%m-%d")}.tif')
-            input_files = _process_and_save_albedo(input_files, delete_tif)
+        for product in ['NDVI', 'ALBEDO']:
+            output_file = str(download_dir /
+                              ('%s/%s_%s.tif' % (product, product, date.strftime("%Y-%m-%d"))))
+            data_files = _preprocess_inputs(input_files, product)
 
-        # merge files and clip to extent, save as tif
-        if input_files:
-            _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_extent,
-                                 delete_input=delete_tif)
+            # merge files and clip to extent, save as tif
+            if data_files:
+                _merge_and_save_tifs(data_files, output_file, latitude_extent, longitude_extent,
+                                     delete_input=delete_tif)
+
+        if delete_tif:
+            for file in input_files:
+                os.remove(file)
 
     if delete_hdf5:
         for file in list(download_dir.glob('*.HDF5')):
@@ -144,16 +146,10 @@ def _dataarray_to_tif(da, filename):
 
 # open hdf5 file as xarray DataArray
 # if this function doesn't work: try to update your xarray and netcdf libraries.
-def _hdf5_to_dataarray(filename, group, product):
+def _hdf5_to_dataarray(filename, group, dataset_name):
     # read the group data
     with xr.open_dataset(filename, group=group, engine='netcdf4') as src:
-
-        if product == 'Proba-V-S5-TOC-NDVI':
-            da = src.NDVI
-        elif product == 'Proba-V-S5-TOC':
-            da = src.TOC
-        elif product == 'quality':
-            da = src.SM
+        da = src[dataset_name]
 
     # fetch metadata
     with xr.open_dataset(filename) as src:
@@ -202,6 +198,8 @@ def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_ex
             'transform': mosaic_trans
         }
 
+        if not os.path.exists(os.path.dirname(output_file)):
+            os.mkdir(os.path.dirname(output_file))
         with rasterio.open(output_file, 'w', **meta) as dst:
             dst.write(mosaic, 1)
 
@@ -215,8 +213,8 @@ def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_ex
 
 # calculate albedo from band files
 # Albedo should be calculated for each downloaded tile and saved as tif
-def _process_and_save_albedo(input_files, delete_input=True):
-    tiles = set([file.split('_')[4] for file in input_files])
+def _preprocess_inputs(input_files, product):
+    tiles = set([os.path.basename(file).split('_')[3] for file in input_files])
     updated_input_files = []
 
     for tile in list(tiles):
@@ -232,28 +230,27 @@ def _process_and_save_albedo(input_files, delete_input=True):
 
         all_bands = np.asarray(all_data).squeeze()
 
-        surface_albedo = (0.429 * all_bands[band_names.index('BLUE'), ...]
-                          + 0.333 * all_bands[band_names.index('RED'), ...]
-                          + 0.133 * all_bands[band_names.index('NIR'), ...]
-                          + 0.105 * all_bands[band_names.index('SWIR'), ...])
+        if product == 'NDVI':
+            data = all_bands[band_names.index('NDVI'), ...]
+        elif product == 'ALBEDO':
+            data = (0.429 * all_bands[band_names.index('BLUE'), ...]
+                    + 0.333 * all_bands[band_names.index('RED'), ...]
+                    + 0.133 * all_bands[band_names.index('NIR'), ...]
+                    + 0.105 * all_bands[band_names.index('SWIR'), ...])
 
         # Mask clouds
         quality_band = all_bands[band_names.index('SM'), ...]
         flag_mask = [1, 2, 3, 4]  # {1: shadow, 2: cloud, 3: undefined, 4: ice+snow}
         bit_mask_array = np.bitwise_or.reduce(flag_mask)*np.ones_like(quality_band)
         mask = np.bitwise_and(quality_band.astype(np.int), bit_mask_array.astype(np.int)) > 0
-        surface_albedo[mask] = None
+        data[mask] = None
 
-        albedo_filename = str(Path(matching_files[0]).parent /
-                              Path(str('_').join(Path(matching_files[0]).stem.split('_')[0:-1]))) + '_ALBEDO.tif'
+        data_filename = str(Path(matching_files[0]).parent /
+                            Path(str('_').join(Path(matching_files[0]).stem.split('_')[0:-1]))) + '_temp.tif'
 
-        with rasterio.open(albedo_filename, 'w', **meta) as dst:
-            dst.write(surface_albedo, 1)
+        with rasterio.open(data_filename, 'w', **meta) as dst:
+            dst.write(data, 1)
 
-        updated_input_files.append(albedo_filename)
-
-    if delete_input:
-        for file in input_files:
-            os.remove(file)
+        updated_input_files.append(data_filename)
 
     return updated_input_files

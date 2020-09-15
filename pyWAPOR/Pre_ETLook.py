@@ -31,7 +31,7 @@ def prepare_level1(output_folder, startdate, enddate, latlim, lonlim, username, 
     # Define the dates
     dates = pd.date_range(startdate, enddate, freq = "D")
 
-    # Only NDVI and albedo are different between Level 1 and Level 2 so downlaod and process them
+    # Only NDVI and albedo are different between Level 1 and Level 2 so download and process them
     # first
 
     # Extend the days for NDVI data with +8 from both sides
@@ -135,14 +135,14 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
     # Define the dates
     dates = pd.date_range(startdate, enddate, freq="D")
 
-    # Only NDVI and albedo are different between Level 1 and Level 2 so downlaod and process them
+    # Only NDVI and albedo are different between Level 1 and Level 2 so download and process them
     # first
 
-    # Download NDVI data
-    pyWAPOR.Collect.PROBAV.NDVI(folder_input_RAW, startdate, enddate, latlim, lonlim,
-                                username_vito, password_vito)
+    # Download 5-day PROBA-V composites
+    pyWAPOR.Collect.PROBAV.PROBAV_S5(folder_input_RAW, startdate, enddate, latlim, lonlim,
+                                     username_vito, password_vito)
 
-    # Create the inputs of MODIS NDVI and albedo for all the Dates
+    # Create the inputs of Proba-v NDVI and albedo for all the Dates
     template_file = None
     for date in dates:
 
@@ -158,7 +158,7 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
             NDVI_file = os.path.join(folder_input_ETLook_Date,
                                      "NDVI_%s.tif" % date.strftime("%Y%m%d"))
             if not os.path.exists(NDVI_file):
-                raw_NDVI_file = os.path.join(folder_input_RAW, "ProbaV",
+                raw_NDVI_file = os.path.join(folder_input_RAW, "PROBAV", "NDVI",
                                              "NDVI_%s.tif" % date.strftime("%Y%m%d"))
                 if os.path.exists(raw_NDVI_file):
                     shutil.copy(raw_NDVI_file, folder_input_ETLook_Date)
