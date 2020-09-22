@@ -219,8 +219,8 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
         # get the dekadal image corresponding with current date
         current_dekadal_date_idx = datetime_timeseries.index(s10_startdate)
 
-        current_dekadal_albedo_array = albedo_dekadal_timeseries[..., current_dekadal_date_idx]
-        current_dekadal_ndvi_array = ndvi_dekadal_timeseries[..., current_dekadal_date_idx]
+        current_dekadal_albedo_array = albedo_dekadal_timeseries_smoothed[..., current_dekadal_date_idx]
+        current_dekadal_ndvi_array = ndvi_dekadal_timeseries_smoothed[..., current_dekadal_date_idx]
 
         datestring = date.strftime('%Y%m%d')
 
