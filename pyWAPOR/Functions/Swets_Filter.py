@@ -17,6 +17,11 @@ from scipy.ndimage.filters import generic_filter
 
 
 def _interpolate1d(data):
+
+    # we need at least 2 non-nan elements
+    if np.sum(~np.isnan(data)*1) < 2:
+        return data
+
     good = ~np.isnan(data)
 
     # scipy interpolation
@@ -113,9 +118,13 @@ def _piecewise_linreg(xyw, window_width=3):
     return y_est
 
 
-# Apply the swets filter on
+# Apply the swets filter on 1d array
 def _apply_swets1d(y):
     window_width = 3  # window width
+
+    # dont smooth if all nan
+    if np.all(np.isnan(y)):
+        return y
 
     y_smoothed = np.zeros_like(y)
     y_smoothed[:] = np.nan
@@ -127,7 +136,7 @@ def _apply_swets1d(y):
 
     return y_smoothed
 
-
+# slow: 3024x3024x7 array takes approx 1 hour on my machine
 def swets_filter(data, do_interpolate=True):
     """
     :param data: np.array((y,x,t))
