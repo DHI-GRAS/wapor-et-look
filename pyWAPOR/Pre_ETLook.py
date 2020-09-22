@@ -10,10 +10,14 @@ import datetime
 import gdal
 import pandas as pd
 import numpy as np
+import rasterio as rio
 
 import pyWAPOR
 import pyWAPOR.Functions.Processing_Functions as PF
 
+from pyWAPOR.Functions.Swets_Filter import swets_filter
+
+from pathlib import Path
 
 def prepare_level1(output_folder, startdate, enddate, latlim, lonlim, username, password,
                    landcover="GlobCover"):
@@ -142,42 +146,105 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
     pyWAPOR.Collect.PROBAV.PROBAV_S5(folder_input_RAW, startdate, enddate, latlim, lonlim,
                                      username_vito, password_vito)
 
-    # Create the inputs of Proba-v NDVI and albedo for all the Dates
+    # Create PROBA-V 10-day composites
+
+    # get the dates at which we have data
+    folder_input_albedo = (Path(folder_input_RAW) / Path('PROBAV/ALBEDO'))
+    folder_input_ndvi = (Path(folder_input_RAW) / Path('PROBAV/NDVI'))
+
+    s5_startdates = [datetime.datetime.strptime(file.stem[-10:], '%Y-%m-%d') for file in
+                     list(folder_input_albedo.glob('*.tif'))]
+    s5_centerdates = [startdate + datetime.timedelta(days=3) for startdate in s5_startdates]
+
+    # allocate large timeseries array
+    albedo_dekadal_timeseries_list = []
+    ndvi_dekadal_timeseries_list = []
+    datetime_timeseries = []
+    first_iteration = True
+
+    # loop over all dates in daterange
+    for year in np.unique(dates.year):
+        for month in np.unique(dates.month):
+            for day in [1, 11, 21]:
+                # find all files in relavant daterange
+                current_datetime = datetime.datetime(year, month, day)
+                composite_daterange = _get_dekadal_daterange(current_datetime)
+                matching_dates = list(set(composite_daterange) & set(s5_centerdates))  # we match on center dates in S5
+
+                albedo_composite_list = []
+                ndvi_composite_list = []
+
+                # open files
+                for s5_centerdate in matching_dates:
+
+                    s5_startdate = s5_centerdate - datetime.timedelta(days=3)  # go back to startdate in S5
+                    s5_datestring = s5_startdate.strftime('%Y-%m-%d')
+
+                    albedo_filename = list(folder_input_albedo.glob(f'*{s5_datestring}*.tif'))[0]
+                    ndvi_filename = list(folder_input_ndvi.glob(f'*{s5_datestring}*.tif'))[0]
+
+                    # open file and append to mosaic-ready array
+                    with rio.open(str(albedo_filename)) as src:
+                        albedo_composite_list.append(src.read().squeeze())
+                        # save a template of the tif metadata
+                        if first_iteration:
+                            meta = src.profile
+                            first_iteration = False
+                    with rio.open(str(ndvi_filename)) as src:
+                        ndvi_composite_list.append(src.read().squeeze())
+
+                if albedo_composite_list:
+                    # create contrained max-composite
+                    albedo_dekadal_composite = np.nanmax(np.asarray(albedo_composite_list), axis=0)
+                    ndvi_dekadal_composite = np.nanmax(np.asarray(ndvi_composite_list), axis=0)
+
+                    # append composite to timeseries
+                    albedo_dekadal_timeseries_list.append(albedo_dekadal_composite)
+                    ndvi_dekadal_timeseries_list.append(ndvi_dekadal_composite)
+                    datetime_timeseries.append(current_datetime)
+
+    # transpose for correct format for swets (ROWxCOLxTIME)
+    albedo_dekadal_timeseries = np.transpose(np.asarray(albedo_dekadal_timeseries_list), axes=[1, 2, 0])
+    ndvi_dekadal_timeseries = np.transpose(np.asarray(ndvi_dekadal_timeseries_list), axes=[1, 2, 0])
+
+    albedo_dekadal_timeseries_smoothed, _ = swets_filter(albedo_dekadal_timeseries)
+    ndvi_dekadal_timeseries_smoothed, _ = swets_filter(ndvi_dekadal_timeseries)
+
+    # save one composite for each individual date
     template_file = None
     for date in dates:
+        # get the dekadal date corresponding with current date
+        s10_startdate = _get_dekadal_date(date)
 
-        try:
-            # Define output folder
-            folder_input_ETLook_Date = os.path.join(folder_input_ETLook,
-                                                    "%s" % date.strftime("%Y%m%d"))
-            if not os.path.exists(folder_input_ETLook_Date):
-                os.makedirs(folder_input_ETLook_Date)
+        # get the dekadal image corresponding with current date
+        current_dekadal_date_idx = datetime_timeseries.index(s10_startdate)
 
-            # TODO: For now the NDVI files are just copied. But we might need to do compositing
-            # and smoothing.
-            NDVI_file = os.path.join(folder_input_ETLook_Date,
-                                     "NDVI_%s.tif" % date.strftime("%Y%m%d"))
-            if not os.path.exists(NDVI_file):
-                raw_NDVI_file = os.path.join(folder_input_RAW, "PROBAV", "NDVI",
-                                             "NDVI_%s.tif" % date.strftime("%Y%m%d"))
-                if os.path.exists(raw_NDVI_file):
-                    shutil.copy(raw_NDVI_file, folder_input_ETLook_Date)
-                else:
-                    print("NDVI is not available for date: %d%02d%02d"
-                          % (date.year, date.month, date.day))
+        current_dekadal_albedo_array = albedo_dekadal_timeseries[..., current_dekadal_date_idx]
+        current_dekadal_ndvi_array = ndvi_dekadal_timeseries[..., current_dekadal_date_idx]
 
-            # Get example files
-            if not template_file and os.path.exists(NDVI_file):
-                template_file = NDVI_file
-                dest_ex = gdal.Open(NDVI_file)
-                geo_ex = dest_ex.GetGeoTransform()
-                proj_ex = dest_ex.GetProjection()
-                dest_ex = None
+        datestring = date.strftime('%Y%m%d')
 
-            # TODO: Deal with Proba-V albedo files in the same was as with NDVI files
+        folder_input_ETLook_Date = Path(folder_input_ETLook) / Path(datestring)
 
-        except:
-            print("No ETLook input dataset for %s" % date)
+        if not os.path.exists(folder_input_ETLook_Date):
+            os.makedirs(folder_input_ETLook_Date)
+
+        albedo_filename = folder_input_ETLook_Date / Path(f'ALBEDO_{datestring}.tif')
+        ndvi_filename = folder_input_ETLook_Date / Path(f'NDVI_{datestring}.tif')
+
+        # save tif
+        with rio.open(str(albedo_filename), 'w', **meta) as dst:
+            dst.write(current_dekadal_albedo_array, 1)
+
+        with rio.open(str(ndvi_filename), 'w', **meta) as dst:
+            dst.write(current_dekadal_ndvi_array, 1)
+
+        if not template_file and os.path.exists(ndvi_filename):
+            template_file = str(ndvi_filename)
+            dest_ex = gdal.Open(str(ndvi_filename))
+            geo_ex = dest_ex.GetGeoTransform()
+            proj_ex = dest_ex.GetProjection()
+            dest_ex = None
 
     # Download and create all other Level 2 inputs
     prepare_level1_level2(output_folder, startdate, enddate, latlim, lonlim, username_earthdata,
@@ -793,3 +860,26 @@ def Combine_LST(folders_input_RAW, Startdate, Enddate):
             PF.Save_as_tiff(Time_file, Time, geo_ex, proj_ex)
 
     return()
+
+
+# get the last day in the month in date
+def _get_last_day_in_month(currentdate):
+    next_month = currentdate.replace(day=28) + datetime.timedelta(days=4)
+    return next_month - datetime.timedelta(days=next_month.day)
+
+
+# get dekadal daterange
+def _get_dekadal_daterange(currentdate):
+    if currentdate.day < 21:
+        return [currentdate + datetime.timedelta(days=x) for x in range(10)]
+    else:
+        delta = _get_last_day_in_month(currentdate) - currentdate
+        return [currentdate + datetime.timedelta(days=x) for x in range(delta.days+1)]
+
+
+# get the dekadal composite date matching the current date
+def _get_dekadal_date(currentdate):
+    dekadal_start_dates = [datetime.datetime(currentdate.year, currentdate.month, day) for day in [1, 11, 21]]
+    dekadal_center_dates = [datetime.datetime(currentdate.year, currentdate.month, day) for day in [5, 15, 25]]
+    nearest_arg = np.argmin(np.abs([currentdate - dekadal_center_date for dekadal_center_date in dekadal_center_dates]))
+    return dekadal_start_dates[nearest_arg]
