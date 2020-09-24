@@ -155,4 +155,4 @@ def swets_filter(data, do_interpolate=True):
         print('running interpolation...')
         y_smoothed = np.apply_along_axis(_interpolate1d, 2, y_smoothed)
 
-    return y_smoothed
+    return y_smoothed.astype(data.dtype)
