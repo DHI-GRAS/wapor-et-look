@@ -166,7 +166,7 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
     for year in np.unique(dates.year):
         for month in np.unique(dates.month):
             for day in [1, 11, 21]:
-                # find all files in relavant daterange
+                # find all files in relevant daterange
                 current_datetime = datetime.datetime(year, month, day)
                 composite_daterange = _get_dekadal_daterange(current_datetime)
                 matching_dates = list(set(composite_daterange) & set(s5_centerdates))  # we match on center dates in S5
@@ -194,13 +194,29 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
                         ndvi_composite_list.append(src.read().squeeze())
 
                 if albedo_composite_list:
-                    # create contrained max-composite
-                    albedo_dekadal_composite = np.nanmax(np.asarray(albedo_composite_list), axis=0)
-                    ndvi_dekadal_composite = np.nanmax(np.asarray(ndvi_composite_list), axis=0)
+                    ndvi_composite_array = np.asarray(ndvi_composite_list)
+                    albedo_composite_array = np.asarray(albedo_composite_list)
 
-                    # append composite to timeseries
-                    albedo_dekadal_timeseries_list.append(albedo_dekadal_composite)
-                    ndvi_dekadal_timeseries_list.append(ndvi_dekadal_composite)
+                    # remove pixels with nan in all bands (because np.nanargmax can't handle these)
+                    nan_mask = np.repeat(np.expand_dims(np.mean(np.isnan(ndvi_composite_array), axis=0) == 1,
+                                                        axis=0), ndvi_composite_array.shape[0], axis=0)
+
+                    ndvi_composite_array[nan_mask] = 0
+                    albedo_composite_array[nan_mask] = 0
+
+                    # contrained max-composite
+                    composite_idx = np.nanargmax(ndvi_composite_array, axis=0)
+
+                    ndvi_dekadal_composite = _numeric_nd_indexing(ndvi_composite_array, composite_idx)
+                    albedo_dekadal_composite = _numeric_nd_indexing(albedo_composite_array, composite_idx)
+
+                    # add nans again
+                    ndvi_dekadal_composite[nan_mask[0, ...]] = np.nan
+                    albedo_dekadal_composite[nan_mask[0, ...]] = np.nan
+
+                    # append to timeseries
+                    albedo_dekadal_timeseries_list.append(albedo_dekadal_composite.astype(albedo_composite_array.dtype))
+                    ndvi_dekadal_timeseries_list.append(ndvi_dekadal_composite.astype(ndvi_composite_array.dtype))
                     datetime_timeseries.append(current_datetime)
 
     # transpose for correct format for swets (ROWxCOLxTIME)
@@ -883,3 +899,11 @@ def _get_dekadal_date(currentdate):
     dekadal_center_dates = [datetime.datetime(currentdate.year, currentdate.month, day) for day in [5, 15, 25]]
     nearest_arg = np.argmin(np.abs([currentdate - dekadal_center_date for dekadal_center_date in dekadal_center_dates]))
     return dekadal_start_dates[nearest_arg]
+
+
+# numeric indexing of nd array
+def _numeric_nd_indexing(array, idx):
+    composite = np.zeros(array.shape[1:])
+    for n in range(0, array.shape[0]):
+        composite[idx == n] = array[n, ...][idx == n]
+    return composite
