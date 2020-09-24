@@ -255,19 +255,19 @@ def _preprocess_inputs(input_files, product):
         cloudmask = np.bitwise_and(quality_band.astype(np.int), bit_mask_array.astype(np.int)) > 0
         data[cloudmask] = None
 
-        # Mask Angle
-        max_angle = 15
+        # Mask Viewing Angle
+        max_angle = 35
 
         swir_vza = all_bands[band_names.index('SWIR-VZA'), ...]
         vnir_vza = all_bands[band_names.index('VNIR-VZA'), ...]
 
-        swir_mask = swir_vza<=max_angle
-        vnir_mask = vnir_vza <= max_angle
+        swir_mask = swir_vza >= max_angle
+        vnir_mask = vnir_vza >= max_angle
 
         if product == 'NDVI':
             data[vnir_mask] = None
         elif product == 'ALBEDO':
-            data[vnir_mask|swir_mask] = None
+            data[vnir_mask & swir_mask] = None
 
         data_filename = str(Path(matching_files[0]).parent /
                             Path(str('_').join(Path(matching_files[0]).stem.split('_')[0:-1]))) + '_temp.tif'
