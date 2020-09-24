@@ -91,12 +91,22 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
         for hdf_file in downloaded_files:
             da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/NDVI', 'NDVI')
             _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + '_NDVI.tif')
+
             band_list = ['BLUE', 'NIR', 'RED', 'SWIR']
             # read all bands and save as individual tifs
             for band in band_list:
                 da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/RADIOMETRY/{band}', 'TOC')
                 _dataarray_to_tif(da, str(Path(hdf_file).parent /
                                           Path(hdf_file).stem) + f'_{band}.tif')
+
+            angle_band_list = ['VNIR', 'SWIR']
+            # read all angle bands and save as individual tifs
+            for band in angle_band_list:
+                da = _hdf5_to_dataarray(hdf_file, f'LEVEL3/GEOMETRY/{band}', 'VZA')
+                _dataarray_to_tif(da, str(Path(hdf_file).parent /
+                                          Path(hdf_file).stem) + f'_{band}-VZA.tif')
+
+            # read and save quality mask
             da = _hdf5_to_dataarray(hdf_file, 'LEVEL3/QUALITY', 'SM')
             _dataarray_to_tif(da, str(Path(hdf_file).parent / Path(hdf_file).stem) + '_SM.tif')
 
@@ -242,8 +252,22 @@ def _preprocess_inputs(input_files, product):
         quality_band = all_bands[band_names.index('SM'), ...]
         flag_mask = [1, 2, 3, 4]  # {1: shadow, 2: cloud, 3: undefined, 4: ice+snow}
         bit_mask_array = np.bitwise_or.reduce(flag_mask)*np.ones_like(quality_band)
-        mask = np.bitwise_and(quality_band.astype(np.int), bit_mask_array.astype(np.int)) > 0
-        data[mask] = None
+        cloudmask = np.bitwise_and(quality_band.astype(np.int), bit_mask_array.astype(np.int)) > 0
+        data[cloudmask] = None
+
+        # Mask Angle
+        max_angle = 15
+
+        swir_vza = all_bands[band_names.index('SWIR-VZA'), ...]
+        vnir_vza = all_bands[band_names.index('VNIR-VZA'), ...]
+
+        swir_mask = swir_vza<=max_angle
+        vnir_mask = vnir_vza <= max_angle
+
+        if product == 'NDVI':
+            data[vnir_mask] = None
+        elif product == 'ALBEDO':
+            data[vnir_mask|swir_mask] = None
 
         data_filename = str(Path(matching_files[0]).parent /
                             Path(str('_').join(Path(matching_files[0]).stem.split('_')[0:-1]))) + '_temp.tif'
