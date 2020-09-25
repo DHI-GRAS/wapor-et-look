@@ -137,22 +137,33 @@ def _apply_swets1d(y):
     return y_smoothed
 
 # slow: 3024x3024x7 array takes approx 1 hour on my machine
-def swets_filter(data, do_interpolate=True):
+def swets_filter(data, do_interpolate=True, axis=2, invert=False):
     """
     :param data: np.array((y,x,t))
     NDVI raster timeseries. Each image in timeseries is shape y,x. Images are stacked along t (time dimension)
     nan values are initially ignored by swets. At the last step, nan values are replaced by linear interpolation
     :param do_interpolate: bool
     True if we want to apply interpolation of nan values
+    :param axis: int
+    Axis for the time-dimension in the array. Filtering/interpolation will be apply along this axis
+    :param invert: bool
+    Inversion of the data and output. This is useful for albedo where bad clous maksing will force the values up,
+    instead of down in NDVI.
 
-    :return: y_est: np.array(y,x,t)
+    :return: y_smoothed: np.array(y,x,t)
     """
 
+    if invert:
+        data = data * -1
+
     print('running filter...')
-    y_smoothed = np.apply_along_axis(_apply_swets1d, 2, data)
+    y_smoothed = np.apply_along_axis(_apply_swets1d, axis, data)
 
     if do_interpolate:
         print('running interpolation...')
-        y_smoothed = np.apply_along_axis(_interpolate1d, 2, y_smoothed)
+        y_smoothed = np.apply_along_axis(_interpolate1d, axis, y_smoothed)
+
+    if invert:
+        y_smoothed = y_smoothed * -1
 
     return y_smoothed.astype(data.dtype)
