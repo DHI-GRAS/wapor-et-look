@@ -223,8 +223,8 @@ def prepare_level2(output_folder, startdate, enddate, latlim, lonlim, username_v
     albedo_dekadal_timeseries = np.transpose(np.asarray(albedo_dekadal_timeseries_list), axes=[1, 2, 0])
     ndvi_dekadal_timeseries = np.transpose(np.asarray(ndvi_dekadal_timeseries_list), axes=[1, 2, 0])
 
-    albedo_dekadal_timeseries_smoothed, _ = swets_filter(albedo_dekadal_timeseries)
-    ndvi_dekadal_timeseries_smoothed, _ = swets_filter(ndvi_dekadal_timeseries)
+    albedo_dekadal_timeseries_smoothed = swets_filter(albedo_dekadal_timeseries)
+    ndvi_dekadal_timeseries_smoothed = swets_filter(ndvi_dekadal_timeseries)
 
     # save one composite for each individual date
     template_file = None
