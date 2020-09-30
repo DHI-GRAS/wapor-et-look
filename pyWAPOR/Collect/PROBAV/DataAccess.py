@@ -41,13 +41,15 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
     start_date = datetime.strptime(start_date, "%Y-%m-%d")
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
-    # download for the date interval +/- the time_buffer
-    time_buffer = timedelta(days=7)
-    delta = (end_date + time_buffer) - (start_date - time_buffer)
+    # Buffer the download to make sure that a decadal composite can be produced regarding of start
+    # and end dates
+    start_date = start_date - timedelta(days=14)
+    end_date = end_date + timedelta(days=8)
+    delta = end_date - start_date
 
     # Loop over all dates
     for i in tqdm(range(delta.days + 1)):
-        date = (start_date - time_buffer) + timedelta(days=i)
+        date = start_date + timedelta(days=i)
 
         # retrieve vito URL
         url = vito.build_url(product=dataset, year=date.year, month=date.month, day=date.day,
