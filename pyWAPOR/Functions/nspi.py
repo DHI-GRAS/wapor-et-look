@@ -6,15 +6,13 @@ Created on Wed Sep 30 11:09:19 2020
 """
 
 import numpy as np
-from numba import njit, float32, int32
+from numba import njit
 
 
 # Based on https://www.sciencedirect.com/science/article/pii/S0034425710003482
 # A simple and effective method for filling gaps in Landsat ETM+ SLC-off images
 
 
-@njit(float32[:](float32[:], float32[:], [int32, int32], float32, float32[:], int32),
-      parallel=True)
 def target_pixel_value(input_image_window, target_image_window, pixel, similarity_threshold,
                        geographic_distance, required_pixels):
     target_pixel_value = np.empty(input_image_window.shape[2]) + np.NaN
@@ -45,23 +43,31 @@ def target_pixel_value(input_image_window, target_image_window, pixel, similarit
     distance_weights = geographic_distance[similar_pixels]
     spectral_weights = rmsd[similar_pixels]
 
+    return _target_pixel_value(target_pixel, distance_weights, spectral_weights,
+                               target_similar_pixels, input_similar_pixels, pixel_num)
+
+
+@njit
+def _target_pixel_value(target_pixel, distance_weights, spectral_weights, target_similar_pixels,
+                        input_similar_pixels, pixel_num):
+
     # Eq 5 and 6
     cd = distance_weights * spectral_weights
     weights = (1 / cd) / np.sum(1 / cd)
-    weights = weights[:, np.newaxis]
+    weights = np.expand_dims(weights, axis=1)
 
     # Eq 7
-    spectral_similarity_value = np.nansum(weights * target_similar_pixels, axis=0)
+    spectral_similarity_value = nb_nansum_axis_0(weights * target_similar_pixels)
     # Eq 8
-    temporal_similarity_value = target_pixel + np.nansum(weights * (target_similar_pixels -
-                                                                    input_similar_pixels),
-                                                         axis=0)
+    temporal_similarity_value = target_pixel + nb_nansum_axis_0(weights *
+                                                                (target_similar_pixels -
+                                                                 input_similar_pixels))
 
     # Eq 9
-    landscape_homogeneity = np.sum(rmsd[similar_pixels]) / pixel_num
+    landscape_homogeneity = np.sum(spectral_weights) / pixel_num
     # Eq 10
-    temporal_homogeneity = np.sum(np.sqrt(np.mean((target_similar_pixels -
-                                                   input_similar_pixels)**2, axis=1))) / pixel_num
+    temporal_homogeneity = np.sum(np.sqrt(nb_mean_axis_0((target_similar_pixels -
+                                                          input_similar_pixels)**2))) / pixel_num
 
     # Eq 11
     t_1 = (1/landscape_homogeneity) / (1/landscape_homogeneity + 1/temporal_homogeneity)
@@ -87,8 +93,8 @@ def histogram_matching(input_image_window, target_image_window, pixel):
         return np.empty(input_image_window.shape[2]) + np.NaN
 
     # Eq 13
-    gain = np.std(target_common_pixels, axis=0) / np.std(input_common_pixels, axis=0)
-    bias = np.mean(target_common_pixels, axis=0) - np.mean(input_common_pixels, axis=0) * gain
+    gain = nb_std_axis_0(target_common_pixels) / nb_std_axis_0(input_common_pixels)
+    bias = nb_mean_axis_0(target_common_pixels) - nb_mean_axis_0(input_common_pixels) * gain
 
     # Eq 14
     target_pixel_value = gain * target_pixel + bias
@@ -97,7 +103,7 @@ def histogram_matching(input_image_window, target_image_window, pixel):
 
 
 # Eq 4
-@njit
+@njit(parallel=True)
 def calc_geographic_distance(window_size):
     ones = np.ones((window_size, window_size))
     all_indices = np.argwhere(ones == 1)
@@ -109,14 +115,16 @@ def calc_geographic_distance(window_size):
     return geographic_distance
 
 
-@njit(parallel=True)
 def fill_missing_pixels(input_image, target_image, similarity_threshold, required_pixels,
                         window_size, geographic_distance, is_max_window):
 
     filled_image = target_image.copy()
     f = int(window_size/2)
     width, height = input_image.shape[0:2]
-    for missing_pixel in np.argwhere(np.isnan(target_image[:, :, 0])):
+    missing_pixels = np.argwhere(np.isnan(target_image[:, :, 0]))
+
+    for i in range(len(missing_pixels)):
+        missing_pixel = missing_pixels[i]
         window = [[max(missing_pixel[0]-f, 0), min(missing_pixel[0]+f+1, width)],
                   [max(missing_pixel[1]-f, 0), min(missing_pixel[1]+f+1, height)]]
         window_pixel = [missing_pixel[0] - window[0][0], missing_pixel[1] - window[1][0]]
@@ -129,7 +137,6 @@ def fill_missing_pixels(input_image, target_image, similarity_threshold, require
             required_pixels)
 
         if np.isnan(filled_image[missing_pixel[0], missing_pixel[1], 0]) and is_max_window:
-            print("Histogram matching")
             filled_image[missing_pixel[0], missing_pixel[1], :] = histogram_matching(
                 input_image[window[0][0]:window[0][1], window[1][0]:window[1][1], :],
                 target_image[window[0][0]:window[0][1], window[1][0]:window[1][1], :],
@@ -165,3 +172,58 @@ def nspi(input_image, target_image, num_classes, required_pixels, max_window_siz
                                            is_max_window)
 
     return target_image
+
+
+###########################
+# Numba helper functions, taken from
+# https://github.com/numba/numba/issues/1269#issuecomment-702665837
+
+@njit
+def apply_along_axis_0(func1d, arr):
+    """Like calling func1d(arr, axis=0)"""
+    if arr.size == 0:
+        raise RuntimeError("Must have arr.size > 0")
+    ndim = arr.ndim
+    if ndim == 0:
+        raise RuntimeError("Must have ndim > 0")
+    elif 1 == ndim:
+        return func1d(arr)
+    else:
+        result_shape = arr.shape[1:]
+        out = np.empty(result_shape, arr.dtype)
+        _apply_along_axis_0(func1d, arr, out)
+        return out
+
+
+@njit
+def _apply_along_axis_0(func1d, arr, out):
+    """Like calling func1d(arr, axis=0, out=out). Require arr to be 2d or bigger."""
+    ndim = arr.ndim
+    if ndim < 2:
+        raise RuntimeError("_apply_along_axis_0 requires 2d array or bigger")
+    elif ndim == 2:  # 2-dimensional case
+        for i in range(len(out)):
+            out[i] = func1d(arr[:, i])
+    else:  # higher dimensional case
+        for i, out_slice in enumerate(out):
+            _apply_along_axis_0(func1d, arr[:, i], out_slice)
+
+
+@njit
+def nb_nanmean_axis_0(arr):
+    return apply_along_axis_0(np.nanmean, arr)
+
+
+@njit
+def nb_nansum_axis_0(arr):
+    return apply_along_axis_0(np.nansum, arr)
+
+
+@njit
+def nb_mean_axis_0(arr):
+    return apply_along_axis_0(np.mean, arr)
+
+
+@njit
+def nb_std_axis_0(arr):
+    return apply_along_axis_0(np.std, arr)
