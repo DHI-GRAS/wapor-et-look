@@ -6,7 +6,7 @@ Created on Wed Sep 30 11:09:19 2020
 """
 
 import numpy as np
-from numba import njit
+from numba import jit
 
 
 # Based on https://www.sciencedirect.com/science/article/pii/S0034425710003482
@@ -47,7 +47,7 @@ def target_pixel_value(input_image_window, target_image_window, pixel, similarit
                                target_similar_pixels, input_similar_pixels, pixel_num)
 
 
-@njit
+@jit
 def _target_pixel_value(target_pixel, distance_weights, spectral_weights, target_similar_pixels,
                         input_similar_pixels, pixel_num):
 
@@ -177,7 +177,7 @@ def nspi(input_image, target_image, num_classes, required_pixels, max_window_siz
 # Numba helper functions, taken from
 # https://github.com/numba/numba/issues/1269#issuecomment-702665837
 
-@njit
+@jit
 def apply_along_axis_0(func1d, arr):
     """Like calling func1d(arr, axis=0)"""
     if arr.size == 0:
@@ -194,7 +194,7 @@ def apply_along_axis_0(func1d, arr):
         return out
 
 
-@njit
+@jit
 def _apply_along_axis_0(func1d, arr, out):
     """Like calling func1d(arr, axis=0, out=out). Require arr to be 2d or bigger."""
     ndim = arr.ndim
@@ -208,21 +208,21 @@ def _apply_along_axis_0(func1d, arr, out):
             _apply_along_axis_0(func1d, arr[:, i], out_slice)
 
 
-@njit
+@jit
 def nb_nanmean_axis_0(arr):
     return apply_along_axis_0(np.nanmean, arr)
 
 
-@njit
+@jit
 def nb_nansum_axis_0(arr):
     return apply_along_axis_0(np.nansum, arr)
 
 
-@njit
+@jit
 def nb_mean_axis_0(arr):
     return apply_along_axis_0(np.mean, arr)
 
 
-@njit
+@jit
 def nb_std_axis_0(arr):
     return apply_along_axis_0(np.std, arr)
