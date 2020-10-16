@@ -103,7 +103,6 @@ def histogram_matching(input_image_window, target_image_window, pixel):
 
 
 # Eq 4
-@njit(parallel=True)
 def calc_geographic_distance(window_size):
     ones = np.ones((window_size, window_size))
     all_indices = np.argwhere(ones == 1)
