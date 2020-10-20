@@ -47,7 +47,7 @@ def target_pixel_value(input_image_window, target_image_window, pixel, similarit
                                target_similar_pixels, input_similar_pixels, pixel_num)
 
 
-@njit(parallel=True)
+@jit(parallel=True)
 def _target_pixel_value(target_pixel, distance_weights, spectral_weights, target_similar_pixels,
                         input_similar_pixels, pixel_num):
 
