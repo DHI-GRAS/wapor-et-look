@@ -6,13 +6,13 @@ Created on Wed Sep 30 11:09:19 2020
 """
 
 import numpy as np
-from numba import jit
+from numba import njit, jit
 
 
 # Based on https://www.sciencedirect.com/science/article/pii/S0034425710003482
 # A simple and effective method for filling gaps in Landsat ETM+ SLC-off images
 
-
+@njit(parallel=True)
 def target_pixel_value(input_image_window, target_image_window, pixel, similarity_threshold,
                        geographic_distance, required_pixels):
     target_pixel_value = np.empty(input_image_window.shape[2]) + np.NaN
@@ -47,7 +47,7 @@ def target_pixel_value(input_image_window, target_image_window, pixel, similarit
                                target_similar_pixels, input_similar_pixels, pixel_num)
 
 
-@jit
+@njit(parallel=True)
 def _target_pixel_value(target_pixel, distance_weights, spectral_weights, target_similar_pixels,
                         input_similar_pixels, pixel_num):
 
