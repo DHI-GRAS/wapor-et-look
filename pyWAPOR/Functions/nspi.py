@@ -114,13 +114,14 @@ def calc_geographic_distance(window_size):
     return geographic_distance
 
 
-def fill_missing_pixels(input_image, target_image, similarity_threshold, required_pixels,
+def fill_missing_pixels(input_image, target_image, missing_pixels_mask, similarity_threshold, required_pixels,
                         window_size, geographic_distance, is_max_window):
 
     filled_image = target_image.copy()
     f = int(window_size/2)
     width, height = input_image.shape[0:2]
-    missing_pixels = np.argwhere(np.isnan(target_image[:, :, 0]))
+    # missing_pixels = np.argwhere(np.isnan(target_image[:, :, 0]))
+    missing_pixels = np.argwhere(missing_pixels_mask)
 
     for i in range(len(missing_pixels)):
         missing_pixel = missing_pixels[i]
@@ -144,7 +145,7 @@ def fill_missing_pixels(input_image, target_image, similarity_threshold, require
 
 
 # Section 2.1
-def nspi(input_image, target_image, num_classes, required_pixels, max_window_size=31):
+def nspi(input_image, target_image, missing_pixels_mask, num_classes, required_pixels, max_window_size=31):
 
     # Eq 2
     std_dev_image = np.nanstd(input_image, axis=(0, 1))
@@ -166,7 +167,7 @@ def nspi(input_image, target_image, num_classes, required_pixels, max_window_siz
         if window_size == max_window_size:
             is_max_window = True
 
-        target_image = fill_missing_pixels(input_image, target_image, similarity_threshold,
+        target_image = fill_missing_pixels(input_image, target_image, missing_pixels_mask, similarity_threshold,
                                            required_pixels, window_size, geographic_distance,
                                            is_max_window)
 
