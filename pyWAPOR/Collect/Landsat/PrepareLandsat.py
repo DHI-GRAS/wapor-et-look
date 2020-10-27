@@ -1,5 +1,4 @@
 import sys
-from pathlib import Path
 from pyWAPOR.Collect.Landsat.PreprocessLandsat import PreprocessLandsat
 
 

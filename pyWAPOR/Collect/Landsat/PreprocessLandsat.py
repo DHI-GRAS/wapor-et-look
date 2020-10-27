@@ -13,6 +13,7 @@ from datetime import datetime
 from rasterio.vrt import WarpedVRT
 from pyWAPOR.Functions.nspi import nspi
 
+
 def PreprocessLandsat(landsat_dir):
 
     if isinstance(landsat_dir, str):
@@ -30,9 +31,9 @@ def PreprocessLandsat(landsat_dir):
     L7_dirs = [directory for directory in list((landsat_dir / Path('L7')).glob('*')) if os.path.isdir(directory)]
     L8_dirs = [directory for directory in list((landsat_dir / Path('L8')).glob('*')) if os.path.isdir(directory)]
 
-    print('Unpacking *.tar.gz files...')
+    print('Merging Landsat bands...')
     for directory in tqdm(L7_dirs + L8_dirs):
-        band_names = _merge_and_save_landsat(directory, delete_input=False)
+        band_names = _merge_and_save_landsat(directory, delete_input=True)
 
     L7_tifs = list((landsat_dir / Path('L7')).glob('*T1.tif')) + list((landsat_dir / Path('L7')).glob('*T2.tif'))
     L8_tifs = list((landsat_dir / Path('L8')).glob('*T1.tif')) + list((landsat_dir / Path('L8')).glob('*T2.tif'))
