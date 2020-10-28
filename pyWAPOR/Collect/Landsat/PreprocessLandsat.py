@@ -41,7 +41,7 @@ def PreprocessLandsat(landsat_dir):
         bandnames_list.append(band_names)
 
     # apply nspi gap-filling on the landsat-7 data (slow!)
-    _apply_nspi(landsat_dir, filename_list, band_names)
+    _apply_nspi(landsat_dir, filename_list, bandnames_list)
 
     # calculate NDVI/Albedo
 
@@ -89,7 +89,7 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
             with WarpedVRT(slave_src, **master_dict) as vrt:
                 L8_image = vrt.read()
 
-        bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7', ]
+        bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
 
         L7_band_idx = [L7_bandnames[L7_idx].index(band) for band in bands]
         L8_band_idx = [L8_bandnames[L8_idx].index(band) for band in bands]
@@ -116,19 +116,20 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
         for n in range(0, len(bands)):
             L7_image_reshaped[..., n] = np.where(L7_pixel_cloudmask, np.nan, L7_image_reshaped[..., n])
 
-        out_image_reshaped = nspi(L8_image_reshaped, L7_image_reshaped, missing_pixels_mask,
-                                  num_classes=5, required_pixels=20, max_window_size=15)
+            out_image_reshaped = nspi(L8_image_reshaped, L7_image_reshaped, missing_pixels_mask,
+                                      num_classes=5, required_pixels=20, max_window_size=15)
 
-        out_image = L7_image.copy()
+            # replace the gap-filled bands in the original image
+            out_image = L7_image.astype(np.float64)
+            out_image[L7_band_idx, ...] = np.transpose(out_image_reshaped, axes=[2, 0, 1])
 
-        out_image[L7_band_idx, ...] = np.transpose(out_image_reshaped, axes=[2, 0, 1])
+            # convert nan-values to nodata
+            out_image = np.where(np.isnan(out_image), -9999, out_image).astype(np.int16)
 
-        out_image = np.where(np.isnan(out_image), -9999, out_image).astype(np.int16)
-
-        output_filename = str(Path(L7_file).parent / Path(L7_file).stem) + '_gap-filled.tif'
-
-        with rio.open(output_filename, 'w', **meta) as dst:
-            dst.write(out_image)
+            # save results as tif
+            output_filename = str(Path(L7_file).parent / Path(L7_file).stem) + '_gap-filled.tif'
+            with rio.open(output_filename, 'w', **meta) as dst:
+                dst.write(out_image)
 
 
 # merges individual landsat bands and saves as single tif
