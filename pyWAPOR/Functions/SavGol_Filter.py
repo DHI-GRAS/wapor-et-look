@@ -91,12 +91,25 @@ def _savgol_reconstruct_1d(N0):
     return Nk
 
 
-# input 3D numpy, output3D numpy
-def savgol_reconstruct(data):
-    print('interpolating...')
+def savgol_reconstruct(data, axis=0, invert=False):
+    """
+    :param data: np.array((y,x,t))
+    NDVI/Albedo raster timeseries. Each image in timeseries is shape y,x.
+    :param axis: int
+    Axis for the time-dimension in the array. Filtering/interpolation will be apply along this axis
+    :param invert: bool
+    Inversion of the data and output. This is useful for albedo where bad cloud masking will force the values up,
+    instead of down for NDVI.
 
-    data_interp = np.apply_along_axis(_interpolate_1d, 0, data)
+    :return: y_smoothed: np.array(y,x,t)
+    """
+    if invert:
+        data = data * -1
+
+    print('interpolating...')
+    data_interp = np.apply_along_axis(_interpolate_1d, axis, data)
+
     print('reconstructing...')
-    data_recons = np.apply_along_axis(_savgol_reconstruct_1d, 0, data_interp)
+    data_recons = np.apply_along_axis(_savgol_reconstruct_1d, axis, data_interp)
 
     return data_recons, data_interp

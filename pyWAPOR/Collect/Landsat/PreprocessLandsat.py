@@ -127,7 +127,7 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
             out_image = np.where(np.isnan(out_image), -9999, out_image).astype(np.int16)
 
             # save results as tif
-            output_filename = str(Path(L7_file).parent / Path(L7_file).stem) + '_gap-filled.tif'
+            output_filename = str(landsat_dir / Path(str(Path(L7_file).parent / Path(L7_file).stem) + '_gap-filled.tif'))
             with rio.open(output_filename, 'w', **meta) as dst:
                 dst.write(out_image)
 
