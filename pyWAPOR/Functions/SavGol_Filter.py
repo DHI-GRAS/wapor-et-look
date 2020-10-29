@@ -112,4 +112,8 @@ def savgol_reconstruct(data, axis=0, invert=False):
     print('reconstructing...')
     data_recons = np.apply_along_axis(_savgol_reconstruct_1d, axis, data_interp)
 
+    if invert:
+        data_recons = data_recons * -1
+        data_interp = data_interp * -1
+
     return data_recons, data_interp
