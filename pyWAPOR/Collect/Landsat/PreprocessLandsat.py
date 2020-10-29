@@ -14,7 +14,7 @@ from rasterio.vrt import WarpedVRT
 from pyWAPOR.Functions.nspi import nspi
 
 
-def PreprocessLandsat(landsat_dir):
+def PreprocessLandsat(landsat_dir, output_dir):
 
     if isinstance(landsat_dir, str):
         landsat_dir = Path(landsat_dir)
@@ -43,16 +43,144 @@ def PreprocessLandsat(landsat_dir):
     # apply nspi gap-filling on the landsat-7 data (slow!)
     _apply_nspi(landsat_dir, filename_list, bandnames_list)
 
-    # calculate NDVI/Albedo
+    # calculate NDVI/ABEDO and save
+    _process_and_save(landsat_dir, filename_list, bandnames_list, output_dir)
 
-    # For NDVI:
-        # Fill gaps using Weiss et. al. 2014
-        # Smoothe using the Savitzky-Golay filter
-        # Calculate dekadal NDVI as mean of the dekade
 
-    # For Albedo
-        # Smoothe using the Savitzky-Golay filter
-        # Calculate dekadal NDVI as mean of the dekade
+def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder):
+
+    NDVI = []
+    ALBEDO = []
+
+    master_src = None
+    dates = [datetime.strptime(str(f).split('_')[3], '%Y%m%d') for f in filename_list]
+
+    # we need to sort according to date before filtering the timeseries
+    sorted_dates = [dates[idx] for idx in np.argsort(dates)]
+    sorted_filenames = [filename_list[idx] for idx in np.argsort(dates)]
+
+    print('Calculating NDVI/ALBEDO...')
+    for i, file in enumerate(tqdm(sorted_filenames)):
+
+        sensor = str(file.split('_')[0])
+        bandnames = bandnames_list[i]
+
+        if sensor == 'LE07':
+            file = file+'_gap-filled'
+            filename = str(landsat_dir/Path('L7')/Path(file)) + '.tif'
+        elif sensor == 'LC08':
+            filename = str(landsat_dir/Path('L8')/Path(file)) + '.tif'
+
+        # use the first file as master
+        if master_src is None:
+            # open with rasterio
+            with rio.open(filename) as master_src:
+                data = master_src.read()
+                meta = master_src.profile
+
+            master_dict = {'transform':master_src.transform,
+                           'height':master_src.height,
+                           'width':master_src.width,
+                           'crs':master_src.crs}
+
+        # all files after master are reprojected to match master
+        else:
+            with rio.open(filename) as src:
+                with WarpedVRT(src, **master_dict) as vrt:
+                    data = vrt.read()
+
+        # calculate NDVI and Albedo
+        NDVI.append(_calc_ndvi(data, bandnames, sensor))
+        ALBEDO.append(_calc_albedo(data, bandnames, sensor))
+
+    NDVI = np.asarray(NDVI)
+    ALBEDO = np.asarray(ALBEDO)
+
+    # TODO: # Fill gaps in NDVI using Weiss et. al. 2014 <----- wait til we hear from Livia
+
+    print('Applying SavGol filter...')
+    NDVI_smooth, NDVI_interp = savgol_reconstruct(NDVI)
+    ALBEDO_smooth, ALBEDO_interp = savgol_reconstruct(ALBEDO, invert=True)
+
+
+    dekadal_dates = [_get_dekadal_date(date) for date in sorted_dates]
+    unique_dekadal_dates = np.unique(dekadal_dates)
+
+    meta.update({'dtype': 'float64',
+                 'nodata': np.nan})
+
+    # merge dekadal images
+    for dekadal_date in unique_dekadal_dates:
+
+        datestring = dekadal_date.strftime('%Y%m%d')
+        idx = np.argwhere(np.isin(dekadal_dates, dekadal_date))
+
+        if idx.shape[0]==0:
+            break
+
+        ndvi_composite_array = NDVI_smooth[idx,...].squeeze()
+        albedo_composite_array = ALBEDO_smooth[idx,...].squeeze()
+
+        ndvi_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
+        albedo_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
+
+        # save dekadal images
+        ndvi_filename = output_folder / Path(datestring) / Path('NDVI_' + datestring + '.tif')
+        albedo_filename = output_folder / Path(datestring) / Path('ALBEDO_' + datestring + '.tif')
+
+        if not os.path.exists(output_folder / Path(datestring)):
+            os.makedirs(output_folder / Path(datestring))
+
+        with rio.open(str(ndvi_filename), 'w', **meta) as dst:
+            dst.write(ndvi_dekadal_composite, 1)
+
+        with rio.open(str(albedo_filename), 'w', **meta) as dst:
+            dst.write(albedo_dekadal_composite, 1)
+
+
+def _calc_ndvi(data, bandnames, sensor):
+    if sensor == 'LE07':
+        bands = ['sr_band3', 'sr_band4']
+
+    elif sensor == 'LC08':
+        bands = ['sr_band4', 'sr_band5']
+
+    red = data[band_names.index(bands[0]), ...].astype(np.float)
+    nir = data[band_names.index(bands[1]), ...].astype(np.float)
+
+    ndvi = (nir - red) / (nir + red)
+
+    # remove too large or too small values
+    ndvi[ndvi > 1] = np.nan
+    ndvi[ndvi < -1] = np.nan
+
+    return ndvi
+
+
+def _calc_albedo(data, bandnames, sensor):
+    albedo_Mp = 0.0001  # multiplicative scaling factor
+    albedo_Ap = 0.0000  # additive scaling factor
+
+    # ESUN values: [Blue, Green, Red, NIR, SWIR-1, SWIR-2]
+    if sensor == 'LE07':
+        ESUN_values = np.array([1970, 1842, 1547, 1044, 225.7, 82.06])
+        bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
+
+    elif sensor == 'LC08':
+        ESUN_values = np.array([1991, 1812, 1549, 972.6, 214.7, 80.7])
+        bands = ['sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band6', 'sr_band7']
+
+    band_idx = [band_names.index(band) for band in bands]
+
+    BGRNS = albedo_Mp * data[band_idx, ...] + albedo_Ap
+
+    albedo = np.sum(BGRNS * np.expand_dims(ESUN_values, (1, 2)), axis=0) / np.sum(ESUN_values)
+
+    # remove too large or too small values
+    albedo[albedo > 1] = np.nan
+    albedo[albedo < 0] = np.nan
+
+    return albedo
 
 
 def _apply_nspi(landsat_dir, filename_list, bandnames_list):
