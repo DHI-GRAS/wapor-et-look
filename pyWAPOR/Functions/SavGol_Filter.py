@@ -86,6 +86,11 @@ def _recursive_smoothing(N0, Ntr, W, niter=0):
 
 @jit
 def _savgol_reconstruct_1d(N0):
+
+    # dont smooth if all nan
+    if np.all(np.isnan(N0)):
+        return N0
+
     Ntr, W = _prepare_smoothing(N0)
     Nk = _recursive_smoothing(N0, Ntr, W)
     return Nk
