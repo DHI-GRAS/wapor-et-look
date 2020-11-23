@@ -198,66 +198,95 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
     L7_dates = [datetime.strptime(str(f).split('_')[3], '%Y%m%d') for f in L7_tifs]
     L8_dates = [datetime.strptime(str(f).split('_')[3], '%Y%m%d') for f in L8_tifs]
 
-    print('Fill gaps (NSPI)...')
-    for L7_idx, L7_file in enumerate(tqdm(L7_tifs)):
+    L7_bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
+    L8_bands = ['sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band6', 'sr_band7']
 
-        L7_date = L7_dates[L7_idx]
-        date_diff = [np.abs(L7_date - L8_date) for L8_date in L8_dates]
-        L8_idx = np.argmin(date_diff)
-        L8_file = L8_tifs[L8_idx]
+    target_folder = Path('L7')
+
+    print('Fill gaps (NSPI)...')
+    for target_idx, target_file in enumerate(tqdm(L7_tifs)):
+
+        target_date = L7_dates[target_idx]
+        date_diff = [np.abs(target_date - input_date) for input_date in L7_dates + L8_dates]
+
+        input_idx = np.argpartition(date_diff, 1)[1]
+
+        input_file = (L7_tifs + L8_tifs)[input_idx]
+
+        input_sensor = str(input_file.split('_')[0])
+
+        if input_sensor == 'LE07':
+            input_folder = Path('L7')
+            input_bands = L7_bands
+        elif input_sensor == 'LC08':
+            input_folder = Path('L8')
+            input_bands = L8_bands
 
         # open target image
-        with rio.open(str(landsat_dir / Path('L7') / Path(L7_file))) as master_src:
+        with rio.open(str(landsat_dir / target_folder / Path(target_file))) as master_src:
             meta = master_src.profile
-            L7_image = master_src.read()
+            target_image = master_src.read()
 
         master_dict = {'transform': master_src.transform, 'height': master_src.height, 'width': master_src.width,
                        'crs': master_src.crs}
 
+        if date_diff[input_idx] > timedelta(32):
+            # save results as tif
+            output_filename = str(
+                landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
+            with rio.open(output_filename, 'w', **meta) as dst:
+                dst.write(target_image)
+
+            continue
+
         # open input image
-        with rio.open(str(landsat_dir / Path('L8') / Path(L8_file))) as slave_src:
+        with rio.open(str(landsat_dir / input_folder / Path(input_file))) as slave_src:
             with WarpedVRT(slave_src, **master_dict) as vrt:
-                L8_image = vrt.read()
+                input_image = vrt.read()
 
-        bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
-
-        L7_band_idx = [L7_bandnames[L7_idx].index(band) for band in bands]
-        L8_band_idx = [L8_bandnames[L8_idx].index(band) for band in bands]
+        target_band_idx = [L7_bandnames[target_idx].index(band) for band in L7_bands]
+        input_band_idx = [(L7_bandnames + L8_bandnames)[input_idx].index(band) for band in input_bands]
 
         # reshape images for correct NSPI format
-        L7_image_reshaped = np.transpose(L7_image[L7_band_idx, ...], axes=[1, 2, 0])
-        L8_image_reshaped = np.transpose(L8_image[L8_band_idx, ...], axes=[1, 2, 0])
+        target_image_reshaped = np.transpose(target_image[target_band_idx, ...], axes=[1, 2, 0])
+        input_image_reshaped = np.transpose(input_image[input_band_idx, ...], axes=[1, 2, 0])
 
         # add nans instead of nodata
-        L7_image_reshaped = np.where(L7_image_reshaped == -9999, np.nan, L7_image_reshaped)
-        L8_image_reshaped = np.where(L8_image_reshaped == -9999, np.nan, L8_image_reshaped)
+        target_image_reshaped = np.where(target_image_reshaped == -9999, np.nan, target_image_reshaped)
+        input_image_reshaped = np.where(input_image_reshaped == -9999, np.nan, input_image_reshaped)
 
         # calculate the missing pixels mask
-        missing_pixels_mask = np.isnan(L7_image_reshaped[..., 0]) & ~np.isnan(L8_image_reshaped[..., 0])
+        missing_pixels_mask = np.isnan(target_image_reshaped[..., 0]) & ~np.isnan(input_image_reshaped[..., 0])
 
         # get the bitmask
-        L7_pixel_qa = L7_image[L7_bandnames[L7_idx].index('pixel_qa'), ...]
-        L7_pixel_qa = np.where(L7_pixel_qa == -9999, 0, L7_pixel_qa)
+        target_pixel_qa = target_image[L7_bandnames[target_idx].index('pixel_qa'), ...]
+        target_pixel_qa = np.where(target_pixel_qa == -9999, 0, target_pixel_qa)
+
+        input_pixel_qa = input_image[(L7_bandnames + L8_bandnames)[input_idx].index('pixel_qa'), ...]
+        input_pixel_qa = np.where(input_pixel_qa == -9999, 0, input_pixel_qa)
 
         # calculate cloud mask
-        L7_pixel_cloudmask = _landsat_cloudmask(L7_pixel_qa)
+        target_pixel_cloudmask = _landsat_cloudmask(target_pixel_qa)
+        input_pixel_cloudmask = _landsat_cloudmask(input_pixel_qa)
 
         # mask clouds
-        for n in range(0, len(bands)):
-            L7_image_reshaped[..., n] = np.where(L7_pixel_cloudmask, np.nan, L7_image_reshaped[..., n])
+        for n in range(0, len(L7_bands)):
+            target_image_reshaped[..., n] = np.where(target_pixel_cloudmask, np.nan, target_image_reshaped[..., n])
+            input_image_reshaped[..., n] = np.where(input_pixel_cloudmask, np.nan, input_image_reshaped[..., n])
 
-        out_image_reshaped = nspi(L8_image_reshaped, L7_image_reshaped, missing_pixels_mask,
+        out_image_reshaped = nspi(input_image_reshaped, target_image_reshaped, missing_pixels_mask,
                                   num_classes=5, required_pixels=20, max_window_size=15)
 
         # replace the gap-filled bands in the original image
-        out_image = L7_image.astype(np.float64)
-        out_image[L7_band_idx, ...] = np.transpose(out_image_reshaped, axes=[2, 0, 1])
+        out_image = target_image.astype(np.float64)
+        out_image[target_band_idx, ...] = np.transpose(out_image_reshaped, axes=[2, 0, 1])
 
         # convert nan-values to nodata
         out_image = np.where(np.isnan(out_image), -9999, out_image).astype(np.int16)
 
         # save results as tif
-        output_filename = str(landsat_dir / Path('L7') / Path(str(Path(L7_file).parent / Path(L7_file).stem) + '_gap-filled.tif'))
+        output_filename = str(
+            landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
         with rio.open(output_filename, 'w', **meta) as dst:
             dst.write(out_image)
 
