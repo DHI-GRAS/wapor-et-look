@@ -6,7 +6,7 @@ Created on Fri Feb 15 09:14:33 2019
 """
 
 import os
-import osr
+from osgeo import osr
 from osgeo import gdal
 import gzip
 import zipfile
