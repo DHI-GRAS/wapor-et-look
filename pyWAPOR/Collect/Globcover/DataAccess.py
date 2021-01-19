@@ -7,7 +7,7 @@ Created on Mon Feb 18 20:50:36 2019
 
 import os
 import urllib
-import gdal
+from osgeo import gdal
 import shutil
 import numpy as np
 

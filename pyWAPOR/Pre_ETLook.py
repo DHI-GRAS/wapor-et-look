@@ -7,7 +7,7 @@ Created on Thu Feb 21 18:57:09 2019
 import os
 import shutil
 import datetime
-import gdal
+from osgeo import gdal
 import pandas as pd
 import numpy as np
 import rasterio as rio

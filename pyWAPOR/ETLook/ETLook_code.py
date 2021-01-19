@@ -1,5 +1,5 @@
 import os
-import gdal
+from osgeo import gdal
 import numpy as np
 import warnings
 

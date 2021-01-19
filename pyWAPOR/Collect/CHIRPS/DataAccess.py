@@ -6,7 +6,7 @@ Module: Collect/CHIRPS
 
 # import general python modules
 import os
-import gdal
+from osgeo import gdal
 import numpy as np
 import pandas as pd
 from ftplib import FTP

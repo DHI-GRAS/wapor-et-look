@@ -8,7 +8,7 @@ import requests, json, time
 import pandas as pd
 import os
 import urllib
-import gdal
+from osgeo import gdal
 import numpy as np
 
 def DownloadData(output_folder, Startdate, Enddate, latlim, lonlim, Waitbar = 1):
