@@ -320,7 +320,7 @@ def main(input_folder, output_folder, Date):
 
     # **canopy resistance***********************************************************
     # constants or predefined:
-    z_obs = 2
+    z_obs = 100
     z_b = 100
     z0m_bare = 0.001
     r0_bare = 0.38
