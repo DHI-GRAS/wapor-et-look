@@ -683,7 +683,9 @@ def main(input_folder, output_folder, Date):
 
     # **initial canopy aerodynamic resistance***********************************************************
 
-    z_obst = ETLook.roughness.obstacle_height(ndvi, z_obst_max, ndvi_obs_min, ndvi_obs_max, obs_fr)
+    # When using Copernicus data z_obst_max is already scaled with LAI in herbaceous landcovers
+    #z_obst = ETLook.roughness.obstacle_height(ndvi, z_obst_max, ndvi_obs_min, ndvi_obs_max, obs_fr)
+    z_obst = z_obst_max
     z_oro = ETLook.roughness.orographic_roughness(slope, dem_resolution) #careful - standard res is set to 250 # !!!
     z0m = ETLook.roughness.roughness_length(lai, z_oro, z_obst, z_obst_max, land_mask)
     ra_canopy_init = ETLook.neutral.initial_canopy_aerodynamic_resistance(u_24, z0m, z_obs)
