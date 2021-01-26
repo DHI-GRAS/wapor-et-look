@@ -248,7 +248,9 @@ def displacement_height(lai, z_obst, land_mask=1, c1=1):
     """
 
     def disp_func(l):
-        return z_obst * (1-(1-np.exp(-np.sqrt(c1*l)))/np.sqrt(c1*l))
+        disp = z_obst * (1-(1-np.exp(-np.sqrt(c1*l)))/np.sqrt(c1*l))
+        disp[l <= 0] = (2./3.)*z_obst[l <= 0]
+        return disp
 
     disp = np.zeros_like(land_mask)
     disp = np.where(land_mask == 1, disp_func(lai), disp)
