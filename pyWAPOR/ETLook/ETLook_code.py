@@ -166,9 +166,10 @@ def main(input_folder, output_folder, Date):
     r0 = dest_albedo.GetRasterBand(1).ReadAsArray()
     r0[np.isnan(lst)] = np.nan
 
-    dest_ndvi = gdal.Open(NDVI_filename)
-    ndvi = dest_ndvi.GetRasterBand(1).ReadAsArray()
-    ndvi[np.isnan(lst)] = np.nan
+    # When using Copernicus data NDVI is not needed anymore
+    #dest_ndvi = gdal.Open(NDVI_filename)
+    #ndvi = dest_ndvi.GetRasterBand(1).ReadAsArray()
+    #ndvi[np.isnan(lst)] = np.nan
 
     dest_lai = gdal.Open(LAI_filename)
     lai = dest_lai.GetRasterBand(1).ReadAsArray()
