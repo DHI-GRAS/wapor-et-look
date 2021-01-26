@@ -24,6 +24,8 @@ def main(input_folder, output_folder, Date):
     ALBEDO_filename = os.path.join(input_folder_date, "ALBEDO_%s.tif" %Date_str)
     NDVI_filename = os.path.join(input_folder_date, "NDVI_%s.tif" %Date_str)
     LST_filename = os.path.join(input_folder_date, "LST_%s.tif" %Date_str)
+    LAI_filename = os.path.join(input_folder_date, "LAI_%s.tif" %Date_str)
+    FVC_filename = os.path.join(input_folder_date, "FVC_%s.tif" %Date_str)
     Time_filename = os.path.join(input_folder_date, "Time_%s.tif" %Date_str)
     Lat_filename = os.path.join(input_folder_date, "Lat_%s.tif" %Date_str)
     Lon_filename = os.path.join(input_folder_date, "Lon_%s.tif" %Date_str)
@@ -167,6 +169,16 @@ def main(input_folder, output_folder, Date):
     dest_ndvi = gdal.Open(NDVI_filename)
     ndvi = dest_ndvi.GetRasterBand(1).ReadAsArray()
     ndvi[np.isnan(lst)] = np.nan
+
+    dest_lai = gdal.Open(LAI_filename)
+    lai = dest_lai.GetRasterBand(1).ReadAsArray()
+    lai = np.maximum(0, lai)
+    lai[np.isnan(lst)] = np.nan
+
+    dest_fvc = gdal.Open(FVC_filename)
+    vc = dest_fvc.GetRasterBand(1).ReadAsArray()
+    vc = np.maximum(0, vc)
+    vc[np.isnan(lst)] = np.nan
 
     desttime = gdal.Open(Time_filename)
     dtime = desttime.GetRasterBand(1).ReadAsArray()
@@ -367,8 +379,10 @@ def main(input_folder, output_folder, Date):
     ######################## MODEL ETLOOK #########################################
 
     # **effective_leaf_area_index**************************************************
-    vc = ETLook.leaf.vegetation_cover(ndvi, nd_min, nd_max, vc_pow)
-    lai = ETLook.leaf.leaf_area_index(vc, vc_min, vc_max, lai_pow)
+    # When using Copernicus data LAI and vegetation cover are estimated using SNAP biophysical
+    # processor
+    #vc = ETLook.leaf.vegetation_cover(ndvi, nd_min, nd_max, vc_pow)
+    #lai = ETLook.leaf.leaf_area_index(vc, vc_min, vc_max, lai_pow)
     lai_eff = ETLook.leaf.effective_leaf_area_index(lai)
 
     vc[np.isnan(QC)] = np.nan
