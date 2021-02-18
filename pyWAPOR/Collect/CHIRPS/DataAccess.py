@@ -114,7 +114,7 @@ def RetrieveData(Date, args):
     if not os.path.exists(DirFileEnd):
 
         # open ftp server
-        ftp = FTP("chg-ftpout.geog.ucsb.edu", "", "")
+        ftp = FTP("ftp.chc.ucsb.edu", "", "")
         ftp.login()
     
     	# Define FTP path to directory
