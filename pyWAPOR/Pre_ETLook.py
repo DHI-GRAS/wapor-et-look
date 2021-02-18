@@ -853,14 +853,14 @@ def Combine_LST(folders_input_RAW, Startdate, Enddate):
             dest_angle_mod = gdal.Open(filename_angle_mod)
             dest_angle_myd = gdal.Open(filename_angle_myd)
             dest_time_mod = gdal.Open(filename_time_mod)
-            dest_time_mod = gdal.Open(filename_time_myd)
+            dest_time_myd = gdal.Open(filename_time_myd)
             dest_lst_mod = gdal.Open(filename_lst_mod)
             dest_lst_myd = gdal.Open(filename_lst_myd)
 
             Array_angle_mod = dest_angle_mod.GetRasterBand(1).ReadAsArray()
             Array_angle_myd = dest_angle_myd.GetRasterBand(1).ReadAsArray()
             Array_time_mod = dest_time_mod.GetRasterBand(1).ReadAsArray()
-            Array_time_myd = dest_time_mod.GetRasterBand(1).ReadAsArray()
+            Array_time_myd = dest_time_myd.GetRasterBand(1).ReadAsArray()
             Array_lst_mod = dest_lst_mod.GetRasterBand(1).ReadAsArray()
             Array_lst_myd = dest_lst_myd.GetRasterBand(1).ReadAsArray()
 
