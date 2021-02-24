@@ -20,7 +20,8 @@ from pathlib import Path
 from geojson import Polygon
 from requests.exceptions import HTTPError
 from datetime import datetime, timedelta
-
+from aiohttp import ClientResponseError, ServerDisconnectedError
+from asyncio import TimeoutError
 # Required for Python 3.6 and 3.7
 import nest_asyncio
 nest_asyncio.apply()
@@ -80,7 +81,8 @@ def download_data(download_dir, start_date, end_date, latitude_extent, longitude
 
                 download_success = True
 
-            except (RuntimeError, HTTPError):
+            except (RuntimeError, HTTPError,
+                    ClientResponseError, ServerDisconnectedError, TimeoutError):
                 no_of_attempts += 1
                 continue
             break
