@@ -199,23 +199,23 @@ def _merge_and_save_tifs(input_files, output_file, latitude_extent, longitude_ex
     mosaic, mosaic_trans = rasterio.merge.merge(src_files_to_mosaic, bounds=bbox)
     mosaic = np.squeeze(mosaic)
 
-    # check if we have data in aoi
-    if np.any(~((mosaic == 0) | np.isnan(mosaic))):
+    # Do not check if we have data in aoi
 
-        meta = {
-            'driver': 'GTiff',
-            'width': mosaic.shape[1],
-            'height': mosaic.shape[0],
-            'count': 1,
-            'dtype': str(mosaic.dtype),
-            'crs': crs,
-            'transform': mosaic_trans
-        }
 
-        if not os.path.exists(os.path.dirname(output_file)):
-            os.mkdir(os.path.dirname(output_file))
-        with rasterio.open(output_file, 'w', **meta) as dst:
-            dst.write(mosaic, 1)
+    meta = {
+        'driver': 'GTiff',
+        'width': mosaic.shape[1],
+        'height': mosaic.shape[0],
+        'count': 1,
+        'dtype': str(mosaic.dtype),
+        'crs': crs,
+        'transform': mosaic_trans
+    }
+
+    if not os.path.exists(os.path.dirname(output_file)):
+        os.mkdir(os.path.dirname(output_file))
+    with rasterio.open(output_file, 'w', **meta) as dst:
+        dst.write(mosaic, 1)
 
     if delete_input:
         for src in src_files_to_mosaic:
