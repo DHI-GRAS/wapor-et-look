@@ -142,10 +142,10 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
 
 def _calc_ndvi(data, bandnames, sensor):
     if sensor == 'LE07':
-        bands = ['sr_band3', 'sr_band4']
+        bands = ['SR_B3', 'SR_B4']
 
     elif sensor == 'LC08':
-        bands = ['sr_band4', 'sr_band5']
+        bands = ['SR_B4', 'SR_B5']
 
     red = data[bandnames.index(bands[0]), ...].astype(np.float)
     nir = data[bandnames.index(bands[1]), ...].astype(np.float)
@@ -166,11 +166,11 @@ def _calc_albedo(data, bandnames, sensor):
     # ESUN values: [Blue, Green, Red, NIR, SWIR-1, SWIR-2]
     if sensor == 'LE07':
         ESUN_values = np.array([1970, 1842, 1547, 1044, 225.7, 82.06])
-        bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
+        bands = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7']
 
     elif sensor == 'LC08':
         ESUN_values = np.array([1991, 1812, 1549, 972.6, 214.7, 80.7])
-        bands = ['sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band6', 'sr_band7']
+        bands = ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7']
 
     band_idx = [bandnames.index(band) for band in bands]
 
@@ -189,8 +189,8 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
     L7_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LE07']
     L8_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LC08']
 
-    L7_tifs = [filename_list[idx] + '.tif' for idx in L7_idx]
-    L8_tifs = [filename_list[idx] + '.tif' for idx in L8_idx]
+    L7_tifs = [filename_list[idx] + '.TIF' for idx in L7_idx]
+    L8_tifs = [filename_list[idx] + '.TIF' for idx in L8_idx]
 
     L7_bandnames = [bandnames_list[idx] for idx in L7_idx]
     L8_bandnames = [bandnames_list[idx] for idx in L8_idx]
@@ -198,8 +198,8 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
     L7_dates = [datetime.strptime(str(f).split('_')[3], '%Y%m%d') for f in L7_tifs]
     L8_dates = [datetime.strptime(str(f).split('_')[3], '%Y%m%d') for f in L8_tifs]
 
-    L7_bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
-    L8_bands = ['sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band6', 'sr_band7']
+    L7_bands = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7']
+    L8_bands = ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7']
 
     target_folder = Path('L7')
 
@@ -259,10 +259,10 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
         missing_pixels_mask = np.isnan(target_image_reshaped[..., 0]) & ~np.isnan(input_image_reshaped[..., 0])
 
         # get the bitmask
-        target_pixel_qa = target_image[L7_bandnames[target_idx].index('pixel_qa'), ...]
+        target_pixel_qa = target_image[L7_bandnames[target_idx].index('QA_PIXEL'), ...]
         target_pixel_qa = np.where(target_pixel_qa == -9999, 0, target_pixel_qa)
 
-        input_pixel_qa = input_image[(L7_bandnames + L8_bandnames)[input_idx].index('pixel_qa'), ...]
+        input_pixel_qa = input_image[(L7_bandnames + L8_bandnames)[input_idx].index('QA_PIXEL'), ...]
         input_pixel_qa = np.where(input_pixel_qa == -9999, 0, input_pixel_qa)
 
         # calculate cloud mask
@@ -293,8 +293,8 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
 
 # merges individual landsat bands and saves as single tif
 def _merge_and_save_landsat(directory, delete_input=False):
-    master_file = list(directory.glob('*pixel_qa.tif'))[0]
-    slave_files = [f for f in list(directory.glob('*.tif')) if 'pixel_qa' not in str(f)]
+    master_file = list(directory.glob('*QA_PIXEL.TIF'))[0]
+    slave_files = [f for f in list(directory.glob('*.TIF')) if 'QA_PIXEL' not in str(f)]
 
     band_names = ['_'.join(master_file.stem.split('_')[-2:])]
 
