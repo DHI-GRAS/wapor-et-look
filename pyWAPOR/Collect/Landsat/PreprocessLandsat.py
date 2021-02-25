@@ -21,10 +21,10 @@ def PreprocessLandsat(landsat_dir, output_dir):
         landsat_dir = Path(landsat_dir)
 
     # unpack the *.tar.gz Landsat files
-    L7_files = list((landsat_dir / Path('L7')).glob('*.tar.gz'))
-    L8_files = list((landsat_dir / Path('L8')).glob('*.tar.gz'))
+    L7_files = list((landsat_dir / Path('L7')).glob('*.tar'))
+    L8_files = list((landsat_dir / Path('L8')).glob('*.tar'))
 
-    print('Unpacking *.tar.gz files...')
+    print('Unpacking *.tar files...')
     for file in tqdm(L7_files + L8_files):
         _unpack_and_save(file, delete_input=False)
 
@@ -343,14 +343,14 @@ def _merge_and_save_landsat(directory, delete_input=False):
     return output_filename.stem, band_names
 
 
-# unpack and saves *.tar.gz files
+# unpack and saves *.tar files
 def _unpack_and_save(file, delete_input=False):
     path = Path(file).parent / Path(Path(file).stem).stem
 
     if ~os.path.isdir(path):
         os.mkdir(path)
 
-    tar = tarfile.open(file, "r:gz")
+    tar = tarfile.open(file, "r:*")
     tar.extractall(path=path)
     tar.close()
 
