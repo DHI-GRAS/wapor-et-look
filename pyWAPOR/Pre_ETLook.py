@@ -717,7 +717,7 @@ def prepare_level1_level2(output_folder, Startdate, Enddate, latlim, lonlim, use
                 str_TRANS = "MERRA"
                 day_name = "daily"
 
-            elif (Date >= datetime.datetime(2016,1,1) and Date < datetime.datetime(2017,1,1)):
+            elif (Date >= datetime.datetime(2016,1,1) and Date < datetime.datetime(2018,1,1)):
                 pyWAPOR.Collect.MERRA.daily_MERRA2(folders_input_RAW, ['swgnet'],StartTime, EndTime, latlim, lonlim, username, password)
                 str_TRANS = "MERRA"
                 day_name = "daily_MERRA2"
