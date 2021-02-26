@@ -189,8 +189,8 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list, overwrite=False):
     L7_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LE07']
     L8_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LC08']
 
-    L7_tifs = [filename_list[idx] + '.TIF' for idx in L7_idx]
-    L8_tifs = [filename_list[idx] + '.TIF' for idx in L8_idx]
+    L7_tifs = [filename_list[idx] + '.tif' for idx in L7_idx]
+    L8_tifs = [filename_list[idx] + '.tif' for idx in L8_idx]
 
     L7_bandnames = [bandnames_list[idx] for idx in L7_idx]
     L8_bandnames = [bandnames_list[idx] for idx in L8_idx]
