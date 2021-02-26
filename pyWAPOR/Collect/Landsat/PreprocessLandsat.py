@@ -124,7 +124,7 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
         albedo_composite_array = ALBEDO_smooth[idx,...]
 
         ndvi_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
-        albedo_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
+        albedo_dekadal_composite = np.nanmean(albedo_composite_array, axis=0)
 
         # save dekadal images
         ndvi_filename = output_folder / Path(datestring) / Path('NDVI_' + datestring + '.tif')
