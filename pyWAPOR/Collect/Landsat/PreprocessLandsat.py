@@ -160,8 +160,8 @@ def _calc_ndvi(data, bandnames, sensor):
 
 
 def _calc_albedo(data, bandnames, sensor):
-    albedo_Mp = 0.0001  # multiplicative scaling factor
-    albedo_Ap = 0.0000  # additive scaling factor
+    albedo_Mp = 2.75e-5  # multiplicative scaling factor for Collection 2
+    albedo_Ap = -0.2  # additive scaling factor for Collection 2
 
     # ESUN values: [Blue, Green, Red, NIR, SWIR-1, SWIR-2]
     if sensor == 'LE07':
