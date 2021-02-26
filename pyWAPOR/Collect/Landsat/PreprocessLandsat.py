@@ -185,7 +185,7 @@ def _calc_albedo(data, bandnames, sensor):
     return albedo
 
 
-def _apply_nspi(landsat_dir, filename_list, bandnames_list):
+def _apply_nspi(landsat_dir, filename_list, bandnames_list, overwrite=False):
     L7_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LE07']
     L8_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LC08']
 
@@ -208,6 +208,12 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
 
         target_date = L7_dates[target_idx]
         date_diff = [np.abs(target_date - input_date) for input_date in L7_dates + L8_dates]
+
+        output_filename = str(
+            landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
+
+        if os.path.isfile(output_filename) and not overwrite:
+            continue
 
         input_idx = np.argpartition(date_diff, 1)[1]
 
@@ -232,8 +238,6 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
 
         if date_diff[input_idx] > timedelta(32):
             # save results as tif
-            output_filename = str(
-                landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
             with rio.open(output_filename, 'w', **meta) as dst:
                 dst.write(target_image)
 
@@ -285,18 +289,24 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
         out_image = np.where(np.isnan(out_image), -9999, out_image).astype(np.int16)
 
         # save results as tif
-        output_filename = str(
-            landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
         with rio.open(output_filename, 'w', **meta) as dst:
             dst.write(out_image)
 
 
 # merges individual landsat bands and saves as single tif
-def _merge_and_save_landsat(directory, delete_input=False):
+def _merge_and_save_landsat(directory, delete_input=False, overwrite=False):
+
     master_file = list(directory.glob('*QA_PIXEL.TIF'))[0]
     slave_files = [f for f in list(directory.glob('*.TIF')) if 'QA_PIXEL' not in str(f)]
 
+    output_filename = master_file.parents[1] / Path(
+        '_'.join(master_file.stem.split('_')[0:-2]) + '.tif')
+
     band_names = ['_'.join(master_file.stem.split('_')[-2:])]
+
+    if os.path.isfile(output_filename) and not overwrite:
+        return output_filename.stem, band_names
+
 
     # open master and add to array
     with rio.open(str(master_file)) as master_src:
@@ -331,8 +341,6 @@ def _merge_and_save_landsat(directory, delete_input=False):
                  'compress': 'lzw',
                  'interleave': 'pixel',
                  'nodata': -9999})
-
-    output_filename = master_file.parents[1] / Path('_'.join(master_file.stem.split('_')[0:-2]) + '.tif')
 
     with rio.open(output_filename, 'w', **meta) as dst:
         dst.write(data)
