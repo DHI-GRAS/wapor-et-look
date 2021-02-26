@@ -344,11 +344,17 @@ def _merge_and_save_landsat(directory, delete_input=False):
 
 
 # unpack and saves *.tar files
-def _unpack_and_save(file, delete_input=False):
+def _unpack_and_save(file, delete_input=False, overwrite=False):
     path = Path(file).parent / Path(Path(file).stem).stem
 
-    if ~os.path.isdir(path):
-        os.mkdir(path)
+    # If folder exists assume that tar has already been uncompressed
+    if os.path.isdir(path):
+        if overwrite:
+            path.rmdir()
+        else:
+            return
+
+    os.mkdir(path)
 
     tar = tarfile.open(file, "r:*")
     tar.extractall(path=path)
