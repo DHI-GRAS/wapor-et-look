@@ -306,8 +306,10 @@ def _merge_and_save_landsat(directory, delete_input=False, overwrite=False):
     band_names = ['_'.join(master_file.stem.split('_')[-2:])]
 
     if os.path.isfile(output_filename) and not overwrite:
+        # for each slave-file, open and append to array
+        for i, file in enumerate(slave_files):
+            band_names.append('_'.join(file.stem.split('_')[-2:]))
         return output_filename.stem, band_names
-
 
     # open master and add to array
     with rio.open(str(master_file)) as master_src:
