@@ -11,7 +11,6 @@ from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
 from datetime import timedelta
-from rasterio.vrt import WarpedVRT
 from pyWAPOR.Functions.nspi import nspi
 from pyWAPOR.Functions.SavGol_Filter import savgol_reconstruct
 from pyWAPOR.Pre_ETLook import _get_dekadal_date
@@ -41,6 +40,7 @@ def PreprocessLandsat(landsat_dir, output_dir):
         filename, band_names = _merge_and_save_landsat(directory, delete_input=False)
         filename_list.append(filename)
         bandnames_list.append(band_names)
+
 
     # apply nspi gap-filling on the landsat-7 data (slow!)[
     _apply_nspi(landsat_dir, filename_list, bandnames_list)
@@ -90,7 +90,7 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
         # all files after master are reprojected to match master
         else:
             with rio.open(filename) as src:
-                with WarpedVRT(src, **master_dict) as vrt:
+                with rio.vrt.WarpedVRT(src, **master_dict) as vrt:
                     data = vrt.read()
 
         # calculate NDVI and Albedo
@@ -210,8 +210,7 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list, overwrite=False):
         target_date = L7_dates[target_idx]
         date_diff = [np.abs(target_date - input_date) for input_date in L7_dates + L8_dates]
 
-        output_filename = str(
-            landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
+        output_filename = str(landsat_dir / target_folder / Path(target_file).stem) + '_gap-filled.tif'
 
         if os.path.isfile(output_filename) and not overwrite:
             continue
@@ -246,7 +245,7 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list, overwrite=False):
 
         # open input image
         with rio.open(str(landsat_dir / input_folder / Path(input_file))) as slave_src:
-            with WarpedVRT(slave_src, **master_dict) as vrt:
+            with rio.vrt.WarpedVRT(slave_src, **master_dict) as vrt:
                 input_image = vrt.read()
 
         target_band_idx = [L7_bandnames[target_idx].index(band) for band in L7_bands]
@@ -328,7 +327,7 @@ def _merge_and_save_landsat(directory, delete_input=False, overwrite=False):
     # for each slave-file, open and append to array
     for i, file in enumerate(slave_files):
         with rio.open(file) as slave_src:
-            with WarpedVRT(slave_src, **master_dict) as vrt:
+            with rio.vrt.WarpedVRT(slave_src, **master_dict) as vrt:
                 data[i + 1, ...] = vrt.read().squeeze()
 
         band_names.append('_'.join(file.stem.split('_')[-2:]))
