@@ -375,10 +375,17 @@ def _unpack_and_save(file, delete_input=False, overwrite=False):
 
 
 # returns cloud mask given quality band as input
+# Updated to match Collection 2 QA_PIXEL
+# https://www.usgs.gov/media/files/landsat-8-9-olitirs-collection-2-level-2-data-format-control-book
+# https://www.usgs.gov/media/files/landsat-7-etm-collection-2-level-2-data-format-control-book
 def _landsat_cloudmask(quality_band):
-    # if clouds (bit 5) and low/medium/high probability (bit 6 and 7) then clouds
-    clouds = ((quality_band & (1 << 5)) > 1) & ((quality_band & ((1 << 6) | (1 << 7))) > 1)
-    # if shadows (pixel 3)
-    shadows = (quality_band & (1 << 3)) > 1
+    # if clouds (bit 3) and low/medium/high probability (bit 8 and 9) then clouds
+    clouds = ((quality_band & (1 << 3)) > 1) & ((quality_band & ((1 << 8) | (1 << 9))) > 1)
+    # if shadows (bit 4) and low/medium/high probability shadows (bit 10 and 11) then shadows
+    shadows = ((quality_band & (1 << 4)) > 1) & ((quality_band & ((1 << 10) | (1 << 11))) > 1)
+    # if cirrus (bit 2) and low/medium/high probability shadows (bit 14 and 15) then shadows
+    cirrus = ((quality_band & (1 << 2)) > 1) & ((quality_band & ((1 << 14) | (1 << 15))) > 1)
 
-    return clouds | shadows
+    return np.logical_or.reduce((clouds, shadows, cirrus))
+
+
