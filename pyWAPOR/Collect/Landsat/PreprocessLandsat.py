@@ -97,6 +97,8 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
         NDVI.append(_calc_ndvi(data, bandnames, sensor))
         ALBEDO.append(_calc_albedo(data, bandnames, sensor))
 
+        del data
+
     NDVI = np.asarray(NDVI)
     ALBEDO = np.asarray(ALBEDO)
 
@@ -104,7 +106,9 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
 
     print('Applying SavGol filter...')
     NDVI_smooth, _ = savgol_reconstruct(NDVI)
+    del NDVI
     ALBEDO_smooth, _ = savgol_reconstruct(ALBEDO, invert=True)
+    del ALBEDO
 
     dekadal_dates = [_get_dekadal_date(date) for date in sorted_dates]
     unique_dekadal_dates = np.unique(dekadal_dates)
