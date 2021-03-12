@@ -64,6 +64,7 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
 
     print('Calculating NDVI/ALBEDO...')
     # TODO: # enable delete inputs
+    block_windows = []
     for i, file in enumerate(tqdm(sorted_filenames)):
 
         sensor = str(file.split('_')[0])
@@ -75,74 +76,82 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
         elif sensor == 'LC08':
             filename = str(landsat_dir/Path('L8')/Path(file)) + '.tif'
 
-        # use the first file as master
-        if master_src is None:
-            # open with rasterio
-            with rio.open(filename) as master_src:
-                data = master_src.read()
-                meta = master_src.profile
-
-            master_dict = {'transform':master_src.transform,
-                           'height':master_src.height,
-                           'width':master_src.width,
-                           'crs':master_src.crs}
-
-        # all files after master are reprojected to match master
-        else:
+        if not block_windows:
             with rio.open(filename) as src:
-                with rio.vrt.WarpedVRT(src, **master_dict) as vrt:
-                    data = vrt.read()
+                block_windows = src.block_window(1)[1]
 
-        # calculate NDVI and Albedo
-        NDVI.append(_calc_ndvi(data, bandnames, sensor))
-        ALBEDO.append(_calc_albedo(data, bandnames, sensor))
+        for window in block_windows:
+            # use the first file as master
+            if master_src is None:
+                # open with rasterio
+                with rio.open(filename) as master_src:
+                    data = master_src.read(window=window)
+                    meta = master_src.profile
 
-        del data
+                master_dict = {'transform': master_src.transform,
+                               'height': master_src.height,
+                               'width': master_src.width,
+                               'crs': master_src.crs}
 
-    NDVI = np.asarray(NDVI)
-    ALBEDO = np.asarray(ALBEDO)
+            # all files after master are reprojected to match master
+            else:
+                with rio.open(filename) as src:
+                    with rio.vrt.WarpedVRT(src, **master_dict) as vrt:
+                        data = vrt.read(window=window)
 
-    # TODO: # Fill gaps in NDVI using Weiss et. al. 2014 <----- wait til we hear from Livia
+            # calculate NDVI and Albedo
+            NDVI.append(_calc_ndvi(data, bandnames, sensor))
+            ALBEDO.append(_calc_albedo(data, bandnames, sensor))
 
-    print('Applying SavGol filter...')
-    NDVI_smooth, _ = savgol_reconstruct(NDVI)
-    del NDVI
-    ALBEDO_smooth, _ = savgol_reconstruct(ALBEDO, invert=True)
-    del ALBEDO
+            del data
 
-    dekadal_dates = [_get_dekadal_date(date) for date in sorted_dates]
-    unique_dekadal_dates = np.unique(dekadal_dates)
+        NDVI = np.asarray(NDVI)
+        ALBEDO = np.asarray(ALBEDO)
 
-    meta.update({'dtype': 'float64',
-                 'nodata': np.nan})
+        print('Applying SavGol filter...')
+        NDVI_smooth, _ = savgol_reconstruct(NDVI)
+        del NDVI
+        ALBEDO_smooth, _ = savgol_reconstruct(ALBEDO, invert=True)
+        del ALBEDO
 
-    # merge dekadal images
-    for dekadal_date in unique_dekadal_dates:
+        dekadal_dates = [_get_dekadal_date(date) for date in sorted_dates]
+        unique_dekadal_dates = np.unique(dekadal_dates)
 
-        datestring = dekadal_date.strftime('%Y%m%d')
-        idx = np.argwhere(np.isin(dekadal_dates, dekadal_date))[:,0]
+        meta.update({'dtype': 'float64',
+                     'nodata': np.nan})
 
-        if idx.shape[0]==0:
-            break
+        # merge dekadal images
+        for dekadal_date in unique_dekadal_dates:
 
-        ndvi_composite_array = NDVI_smooth[idx,...]
-        albedo_composite_array = ALBEDO_smooth[idx,...]
+            datestring = dekadal_date.strftime('%Y%m%d')
+            idx = np.argwhere(np.isin(dekadal_dates, dekadal_date))[:, 0]
 
-        ndvi_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
-        albedo_dekadal_composite = np.nanmean(albedo_composite_array, axis=0)
+            if idx.shape[0] == 0:
+                break
 
-        # save dekadal images
-        ndvi_filename = output_folder / Path(datestring) / Path('NDVI_' + datestring + '.tif')
-        albedo_filename = output_folder / Path(datestring) / Path('ALBEDO_' + datestring + '.tif')
+            ndvi_composite_array = NDVI_smooth[idx, ...]
+            albedo_composite_array = ALBEDO_smooth[idx, ...]
 
-        if not os.path.exists(output_folder / Path(datestring)):
-            os.makedirs(output_folder / Path(datestring))
+            ndvi_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
+            albedo_dekadal_composite = np.nanmean(albedo_composite_array, axis=0)
 
-        with rio.open(str(ndvi_filename), 'w', **meta) as dst:
-            dst.write(ndvi_dekadal_composite, 1)
+            # save dekadal images
+            ndvi_filename = output_folder / Path(datestring) / Path('NDVI_' + datestring + '.tif')
+            albedo_filename = output_folder / Path(datestring) / Path('ALBEDO_' + datestring + '.tif')
 
-        with rio.open(str(albedo_filename), 'w', **meta) as dst:
-            dst.write(albedo_dekadal_composite, 1)
+            if not os.path.exists(output_folder / Path(datestring)):
+                os.makedirs(output_folder / Path(datestring))
+
+            if window == block_windows[1]:
+                with rio.open(str(ndvi_filename), 'w', **meta) as dst:
+                    dst.write(ndvi_dekadal_composite, 1, window=window)
+                with rio.open(str(albedo_filename), 'w', **meta) as dst:
+                    dst.write(albedo_dekadal_composite, 1)
+            else:
+                with rio.open(str(ndvi_filename), 'r+') as dst:
+                    dst.write(ndvi_dekadal_composite, 1, window=window)
+                with rio.open(str(albedo_filename), 'r+') as dst:
+                    dst.write(albedo_dekadal_composite, 1)
 
 
 def _calc_ndvi(data, bandnames, sensor):
