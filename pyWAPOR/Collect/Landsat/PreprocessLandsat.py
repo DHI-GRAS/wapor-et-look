@@ -10,7 +10,7 @@ import rasterio as rio
 from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
-from rasterio.vrt import WarpedVRT
+from datetime import timedelta
 from pyWAPOR.Functions.nspi import nspi
 from pyWAPOR.Functions.SavGol_Filter import savgol_reconstruct
 from pyWAPOR.Pre_ETLook import _get_dekadal_date
@@ -21,10 +21,10 @@ def PreprocessLandsat(landsat_dir, output_dir):
         landsat_dir = Path(landsat_dir)
 
     # unpack the *.tar.gz Landsat files
-    L7_files = list((landsat_dir / Path('L7')).glob('*.tar.gz'))
-    L8_files = list((landsat_dir / Path('L8')).glob('*.tar.gz'))
+    L7_files = list((landsat_dir / Path('L7')).glob('*.tar'))
+    L8_files = list((landsat_dir / Path('L8')).glob('*.tar'))
 
-    print('Unpacking *.tar.gz files...')
+    print('Unpacking *.tar files...')
     for file in tqdm(L7_files + L8_files):
         _unpack_and_save(file, delete_input=False)
 
@@ -40,6 +40,7 @@ def PreprocessLandsat(landsat_dir, output_dir):
         filename, band_names = _merge_and_save_landsat(directory, delete_input=False)
         filename_list.append(filename)
         bandnames_list.append(band_names)
+
 
     # apply nspi gap-filling on the landsat-7 data (slow!)[
     _apply_nspi(landsat_dir, filename_list, bandnames_list)
@@ -89,12 +90,14 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
         # all files after master are reprojected to match master
         else:
             with rio.open(filename) as src:
-                with WarpedVRT(src, **master_dict) as vrt:
+                with rio.vrt.WarpedVRT(src, **master_dict) as vrt:
                     data = vrt.read()
 
         # calculate NDVI and Albedo
         NDVI.append(_calc_ndvi(data, bandnames, sensor))
         ALBEDO.append(_calc_albedo(data, bandnames, sensor))
+
+        del data
 
     NDVI = np.asarray(NDVI)
     ALBEDO = np.asarray(ALBEDO)
@@ -103,7 +106,9 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
 
     print('Applying SavGol filter...')
     NDVI_smooth, _ = savgol_reconstruct(NDVI)
+    del NDVI
     ALBEDO_smooth, _ = savgol_reconstruct(ALBEDO, invert=True)
+    del ALBEDO
 
     dekadal_dates = [_get_dekadal_date(date) for date in sorted_dates]
     unique_dekadal_dates = np.unique(dekadal_dates)
@@ -124,7 +129,7 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
         albedo_composite_array = ALBEDO_smooth[idx,...]
 
         ndvi_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
-        albedo_dekadal_composite = np.nanmean(ndvi_composite_array, axis=0)
+        albedo_dekadal_composite = np.nanmean(albedo_composite_array, axis=0)
 
         # save dekadal images
         ndvi_filename = output_folder / Path(datestring) / Path('NDVI_' + datestring + '.tif')
@@ -142,10 +147,10 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
 
 def _calc_ndvi(data, bandnames, sensor):
     if sensor == 'LE07':
-        bands = ['sr_band3', 'sr_band4']
+        bands = ['SR_B3', 'SR_B4']
 
     elif sensor == 'LC08':
-        bands = ['sr_band4', 'sr_band5']
+        bands = ['SR_B4', 'SR_B5']
 
     red = data[bandnames.index(bands[0]), ...].astype(np.float)
     nir = data[bandnames.index(bands[1]), ...].astype(np.float)
@@ -160,17 +165,17 @@ def _calc_ndvi(data, bandnames, sensor):
 
 
 def _calc_albedo(data, bandnames, sensor):
-    albedo_Mp = 0.0001  # multiplicative scaling factor
-    albedo_Ap = 0.0000  # additive scaling factor
+    albedo_Mp = 2.75e-5  # multiplicative scaling factor for Collection 2
+    albedo_Ap = -0.2  # additive scaling factor for Collection 2
 
     # ESUN values: [Blue, Green, Red, NIR, SWIR-1, SWIR-2]
     if sensor == 'LE07':
         ESUN_values = np.array([1970, 1842, 1547, 1044, 225.7, 82.06])
-        bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
+        bands = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7']
 
     elif sensor == 'LC08':
         ESUN_values = np.array([1991, 1812, 1549, 972.6, 214.7, 80.7])
-        bands = ['sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band6', 'sr_band7']
+        bands = ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7']
 
     band_idx = [bandnames.index(band) for band in bands]
 
@@ -185,7 +190,7 @@ def _calc_albedo(data, bandnames, sensor):
     return albedo
 
 
-def _apply_nspi(landsat_dir, filename_list, bandnames_list):
+def _apply_nspi(landsat_dir, filename_list, bandnames_list, overwrite=False):
     L7_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LE07']
     L8_idx = [i for i, file in enumerate(filename_list) if str(file.split('_')[0]) == 'LC08']
 
@@ -198,8 +203,8 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
     L7_dates = [datetime.strptime(str(f).split('_')[3], '%Y%m%d') for f in L7_tifs]
     L8_dates = [datetime.strptime(str(f).split('_')[3], '%Y%m%d') for f in L8_tifs]
 
-    L7_bands = ['sr_band1', 'sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band7']
-    L8_bands = ['sr_band2', 'sr_band3', 'sr_band4', 'sr_band5', 'sr_band6', 'sr_band7']
+    L7_bands = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7']
+    L8_bands = ['SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7']
 
     target_folder = Path('L7')
 
@@ -208,6 +213,11 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
 
         target_date = L7_dates[target_idx]
         date_diff = [np.abs(target_date - input_date) for input_date in L7_dates + L8_dates]
+
+        output_filename = str(landsat_dir / target_folder / Path(target_file).stem) + '_gap-filled.tif'
+
+        if os.path.isfile(output_filename) and not overwrite:
+            continue
 
         input_idx = np.argpartition(date_diff, 1)[1]
 
@@ -232,8 +242,6 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
 
         if date_diff[input_idx] > timedelta(32):
             # save results as tif
-            output_filename = str(
-                landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
             with rio.open(output_filename, 'w', **meta) as dst:
                 dst.write(target_image)
 
@@ -241,7 +249,7 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
 
         # open input image
         with rio.open(str(landsat_dir / input_folder / Path(input_file))) as slave_src:
-            with WarpedVRT(slave_src, **master_dict) as vrt:
+            with rio.vrt.WarpedVRT(slave_src, **master_dict) as vrt:
                 input_image = vrt.read()
 
         target_band_idx = [L7_bandnames[target_idx].index(band) for band in L7_bands]
@@ -259,10 +267,10 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
         missing_pixels_mask = np.isnan(target_image_reshaped[..., 0]) & ~np.isnan(input_image_reshaped[..., 0])
 
         # get the bitmask
-        target_pixel_qa = target_image[L7_bandnames[target_idx].index('pixel_qa'), ...]
+        target_pixel_qa = target_image[L7_bandnames[target_idx].index('QA_PIXEL'), ...]
         target_pixel_qa = np.where(target_pixel_qa == -9999, 0, target_pixel_qa)
 
-        input_pixel_qa = input_image[(L7_bandnames + L8_bandnames)[input_idx].index('pixel_qa'), ...]
+        input_pixel_qa = input_image[(L7_bandnames + L8_bandnames)[input_idx].index('QA_PIXEL'), ...]
         input_pixel_qa = np.where(input_pixel_qa == -9999, 0, input_pixel_qa)
 
         # calculate cloud mask
@@ -285,18 +293,26 @@ def _apply_nspi(landsat_dir, filename_list, bandnames_list):
         out_image = np.where(np.isnan(out_image), -9999, out_image).astype(np.int16)
 
         # save results as tif
-        output_filename = str(
-            landsat_dir / Path(str(Path(target_file).parent / Path(target_file).stem) + '_gap-filled.tif'))
         with rio.open(output_filename, 'w', **meta) as dst:
             dst.write(out_image)
 
 
 # merges individual landsat bands and saves as single tif
-def _merge_and_save_landsat(directory, delete_input=False):
-    master_file = list(directory.glob('*pixel_qa.tif'))[0]
-    slave_files = [f for f in list(directory.glob('*.tif')) if 'pixel_qa' not in str(f)]
+def _merge_and_save_landsat(directory, delete_input=False, overwrite=False):
+
+    master_file = list(directory.glob('*QA_PIXEL.TIF'))[0]
+    slave_files = [f for f in list(directory.glob('*.TIF')) if 'QA_PIXEL' not in str(f)]
+
+    output_filename = master_file.parents[1] / Path(
+        '_'.join(master_file.stem.split('_')[0:-2]) + '.tif')
 
     band_names = ['_'.join(master_file.stem.split('_')[-2:])]
+
+    if os.path.isfile(output_filename) and not overwrite:
+        # for each slave-file, open and append to array
+        for i, file in enumerate(slave_files):
+            band_names.append('_'.join(file.stem.split('_')[-2:]))
+        return output_filename.stem, band_names
 
     # open master and add to array
     with rio.open(str(master_file)) as master_src:
@@ -315,7 +331,7 @@ def _merge_and_save_landsat(directory, delete_input=False):
     # for each slave-file, open and append to array
     for i, file in enumerate(slave_files):
         with rio.open(file) as slave_src:
-            with WarpedVRT(slave_src, **master_dict) as vrt:
+            with rio.vrt.WarpedVRT(slave_src, **master_dict) as vrt:
                 data[i + 1, ...] = vrt.read().squeeze()
 
         band_names.append('_'.join(file.stem.split('_')[-2:]))
@@ -332,8 +348,6 @@ def _merge_and_save_landsat(directory, delete_input=False):
                  'interleave': 'pixel',
                  'nodata': -9999})
 
-    output_filename = master_file.parents[1] / Path('_'.join(master_file.stem.split('_')[0:-2]) + '.tif')
-
     with rio.open(output_filename, 'w', **meta) as dst:
         dst.write(data)
 
@@ -343,14 +357,20 @@ def _merge_and_save_landsat(directory, delete_input=False):
     return output_filename.stem, band_names
 
 
-# unpack and saves *.tar.gz files
-def _unpack_and_save(file, delete_input=False):
+# unpack and saves *.tar files
+def _unpack_and_save(file, delete_input=False, overwrite=False):
     path = Path(file).parent / Path(Path(file).stem).stem
 
-    if ~os.path.isdir(path):
-        os.mkdir(path)
+    # If folder exists assume that tar has already been uncompressed
+    if os.path.isdir(path):
+        if overwrite:
+            path.rmdir()
+        else:
+            return
 
-    tar = tarfile.open(file, "r:gz")
+    os.mkdir(path)
+
+    tar = tarfile.open(file, "r:*")
     tar.extractall(path=path)
     tar.close()
 
@@ -359,10 +379,17 @@ def _unpack_and_save(file, delete_input=False):
 
 
 # returns cloud mask given quality band as input
+# Updated to match Collection 2 QA_PIXEL
+# https://www.usgs.gov/media/files/landsat-8-9-olitirs-collection-2-level-2-data-format-control-book
+# https://www.usgs.gov/media/files/landsat-7-etm-collection-2-level-2-data-format-control-book
 def _landsat_cloudmask(quality_band):
-    # if clouds (bit 5) and low/medium/high probability (bit 6 and 7) then clouds
-    clouds = ((quality_band & (1 << 5)) > 1) & ((quality_band & ((1 << 6) | (1 << 7))) > 1)
-    # if shadows (pixel 3)
-    shadows = (quality_band & (1 << 3)) > 1
+    # if clouds (bit 3) and low/medium/high probability (bit 8 and 9) then clouds
+    clouds = ((quality_band & (1 << 3)) > 1) & ((quality_band & ((1 << 8) | (1 << 9))) > 1)
+    # if shadows (bit 4) and low/medium/high probability shadows (bit 10 and 11) then shadows
+    shadows = ((quality_band & (1 << 4)) > 1) & ((quality_band & ((1 << 10) | (1 << 11))) > 1)
+    # if cirrus (bit 2) and low/medium/high probability shadows (bit 14 and 15) then shadows
+    cirrus = ((quality_band & (1 << 2)) > 1) & ((quality_band & ((1 << 14) | (1 << 15))) > 1)
 
-    return clouds | shadows
+    return np.logical_or.reduce((clouds, shadows, cirrus))
+
+
