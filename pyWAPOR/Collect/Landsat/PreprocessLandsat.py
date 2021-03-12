@@ -146,12 +146,12 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
                 with rio.open(str(ndvi_filename), 'w', **meta) as dst:
                     dst.write(ndvi_dekadal_composite, 1, window=window)
                 with rio.open(str(albedo_filename), 'w', **meta) as dst:
-                    dst.write(albedo_dekadal_composite, 1)
+                    dst.write(albedo_dekadal_composite, 1, window=window)
             else:
                 with rio.open(str(ndvi_filename), 'r+') as dst:
                     dst.write(ndvi_dekadal_composite, 1, window=window)
                 with rio.open(str(albedo_filename), 'r+') as dst:
-                    dst.write(albedo_dekadal_composite, 1)
+                    dst.write(albedo_dekadal_composite, 1, window=window)
 
 
 def _calc_ndvi(data, bandnames, sensor):
