@@ -307,7 +307,7 @@ def prepare_level1_level2(output_folder, Startdate, Enddate, latlim, lonlim, use
         pyWAPOR.Collect.Globcover.Landuse(folders_input_RAW, latlim, lonlim)
     if LandCover == "WAPOR":
         # Download Globcover data
-        pyWAPOR.Collect.WAPOR.LandCover(folders_input_RAW, latlim, lonlim, "%s-01-01"%(Startdate.split("-")[0]), "%s-12-31"%(Enddate.split("-")[0]))
+        pyWAPOR.Collect.WAPOR.LandCover(folders_input_RAW, "%s-01-01" % (Startdate.split("-")[0]), "%s-12-31" % (Enddate.split("-")[0]), latlim, lonlim)
     ############### Loop over days for the dynamic data ###############################
 
     # Create the inputs of MODIS for all the Dates
