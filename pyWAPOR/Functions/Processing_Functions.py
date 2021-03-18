@@ -85,7 +85,7 @@ def Save_as_tiff(name='', data='', geo='', projection=''):
     # save as a geotiff
     driver = gdal.GetDriverByName("GTiff")
     dst_ds = driver.Create(name, int(data.shape[1]), int(data.shape[0]), 1,
-                           gdal.GDT_Float32, ['COMPRESS=LZW'])
+                           gdal.GDT_Float32, ['COMPRESS=LZW', 'PREDICTOR=3'])
     srse = osr.SpatialReference()
     if projection == '':
         srse.SetWellKnownGeogCS("WGS84")
