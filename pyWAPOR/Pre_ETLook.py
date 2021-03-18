@@ -327,10 +327,12 @@ def prepare_level1_level2(output_folder, Startdate, Enddate, latlim, lonlim, use
             # Create LST files for ETLook
             LST_file = os.path.join(folder_input_ETLook_Date, "LST_%d%02d%02d.tif" %(Date.year, Date.month, Date.day))
             Time_file = os.path.join(folder_input_ETLook_Date, "Time_%d%02d%02d.tif" %(Date.year, Date.month, Date.day))
+            VZA_file = os.path.join(folder_input_ETLook_Date, "VZA_%d%02d%02d.tif" %(Date.year, Date.month, Date.day))
             if not os.path.exists(LST_file):
                 folder_RAW_file_LST = os.path.join(folders_input_RAW, "MODIS", "LST")
                 filename_LST = "LST_MCD11A1_K_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day)
                 filename_Time = "Time_MCD11A1_hour_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day)
+                filename_VZA = "VZA_MCD11A1_degrees_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day)
                 if os.path.exists(os.path.join(folder_RAW_file_LST, filename_LST)):
                     destLST = PF.reproject_dataset_example(os.path.join(folder_RAW_file_LST, filename_LST), template_file, method=2)
                     LST = destLST.GetRasterBand(1).ReadAsArray()
@@ -341,6 +343,11 @@ def prepare_level1_level2(output_folder, Startdate, Enddate, latlim, lonlim, use
                     Time = destTime.GetRasterBand(1).ReadAsArray()
                     Time[Time==0.0] = -9999
                     PF.Save_as_tiff(Time_file, Time, geo_ex, proj_ex)
+                    
+                    destVZA = PF.reproject_dataset_example(os.path.join(folder_RAW_file_LST, filename_VZA), template_file, method=1)
+                    VZA = destVZA.GetRasterBand(1).ReadAsArray()
+                    VZA[LST==0.0] = -9999
+                    PF.Save_as_tiff(VZA_file, VZA, geo_ex, proj_ex)
                 else:
                     print("LST is not available for date: %d%02d%02d" %(Date.year, Date.month, Date.day))
 
@@ -842,8 +849,9 @@ def Combine_LST(folders_input_RAW, Startdate, Enddate):
 
         LST_file = os.path.join(output_folder_end, "LST_MCD11A1_K_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day))
         Time_file = os.path.join(output_folder_end, "Time_MCD11A1_hour_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day))
+        VZA_file = os.path.join(output_folder_end, "VZA_MCD11A1_degrees_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day))
 
-        if not (os.path.exists(Time_file) or os.path.exists(LST_file)):
+        if not (os.path.exists(Time_file) and os.path.exists(LST_file) and os.path.exists(VZA_file)):
             filename_angle_mod = os.path.join(folders_input_RAW, "MODIS", "MOD11", "Angle_MOD11A1_degrees_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day))
             filename_angle_myd = os.path.join(folders_input_RAW, "MODIS", "MYD11", "Angle_MYD11A1_degrees_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day))
             filename_time_mod = os.path.join(folders_input_RAW, "MODIS", "MOD11", "Time_MOD11A1_hour_daily_%d.%02d.%02d.tif" %(Date.year, Date.month, Date.day))
@@ -867,14 +875,17 @@ def Combine_LST(folders_input_RAW, Startdate, Enddate):
 
             LST = Array_lst_mod
             Time = Array_time_mod
+            VZA = Array_angle_mod
             LST = np.where(np.abs(Array_angle_myd)<np.abs(Array_angle_mod), Array_lst_myd, LST)
             Time = np.where(np.abs(Array_angle_myd)<np.abs(Array_angle_mod), Array_time_myd, Time)
+            VZA = np.where(np.abs(Array_angle_myd)<np.abs(Array_angle_mod), Array_angle_myd, VZA)
 
             proj_ex = dest_angle_mod.GetProjection()
             geo_ex = dest_angle_mod.GetGeoTransform()
 
             PF.Save_as_tiff(LST_file, LST, geo_ex, proj_ex)
             PF.Save_as_tiff(Time_file, Time, geo_ex, proj_ex)
+            PF.Save_as_tiff(VZA_file, VZA, geo_ex, proj_ex)
 
     return()
 
