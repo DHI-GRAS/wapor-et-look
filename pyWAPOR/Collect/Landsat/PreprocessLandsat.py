@@ -64,23 +64,19 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
 
     print('Calculating NDVI/ALBEDO...')
     # TODO: # enable delete inputs
-    block_windows = []
-    for i, file in enumerate(tqdm(sorted_filenames)):
+    
+    # Apply NDVI and albedo calculations and smoothing in tiles otherwise all the landsat data
+    # might not fit in memory
+    filename = _image_path(landsat_dir, sorted_filenames[0])[0]
+    with rio.open(filename) as src:
+        block_windows = src.block_window(1)[1]
 
-        sensor = str(file.split('_')[0])
-        bandnames = sorted_bandnames[i]
+    for window in block_windows:
+        for i, file in enumerate(tqdm(sorted_filenames)):
 
-        if sensor == 'LE07':
-            file = file+'_gap-filled'
-            filename = str(landsat_dir/Path('L7')/Path(file)) + '.tif'
-        elif sensor == 'LC08':
-            filename = str(landsat_dir/Path('L8')/Path(file)) + '.tif'
+            filename, sensor = _image_path(landsat_dir, file)
+            bandnames = sorted_bandnames[i]
 
-        if not block_windows:
-            with rio.open(filename) as src:
-                block_windows = src.block_window(1)[1]
-
-        for window in block_windows:
             # use the first file as master
             if master_src is None:
                 # open with rasterio
@@ -152,6 +148,16 @@ def _process_and_save(landsat_dir, filename_list, bandnames_list, output_folder,
                     dst.write(ndvi_dekadal_composite, 1, window=window)
                 with rio.open(str(albedo_filename), 'r+') as dst:
                     dst.write(albedo_dekadal_composite, 1, window=window)
+
+
+def _image_path(directory, filename):
+    sensor = str(filename.split('_')[0])
+    if sensor == 'LE07':
+        filename = filename+'_gap-filled'
+        filename = str(directory/Path('L7')/Path(filename)) + '.tif'
+    elif sensor == 'LC08':
+        filename = str(directory/Path('L8')/Path(filename)) + '.tif'
+    return filename, sensor
 
 
 def _calc_ndvi(data, bandnames, sensor):
