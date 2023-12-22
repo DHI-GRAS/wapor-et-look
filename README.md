@@ -1,10 +1,16 @@
+#### >>> Please note that a maintained version of pywapor can be found [here](https://bitbucket.org/cioapps/pywapor/src/master/) <<< 
+
 ### Computing Evapotranspiration of large areas using remote sensing data
 
 This repo hosts the algorithm, implemented in Python, and data manual 
 for the computation of evapotranspiration for large areas using remote sensing data
 
+[WaPOR portal (v3)](https://data.apps.fao.org/wapor/)
 
-[WaPOR portal](https://wapor.apps.fao.org/)
+[WaPOR portal (v2)](https://wapor.apps.fao.org/)
+
+Data Manual (v3)
+[WaPOR v3 Data Manual](https://bitbucket.org/cioapps/wapor-et-look/wiki/Home)
 
 Data Manuals and algorithms for Version 2
 
